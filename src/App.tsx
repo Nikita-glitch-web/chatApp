@@ -6,6 +6,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { ErrorPage } from "./components/common/ErrorPage/ErrorPage";
 import { CssBaseline } from "@mui/material";
+import { ChatPage } from "./components/Chat/ChatPage/ChatPage";
 
 const App: React.FC = () => {
   return (
@@ -18,6 +19,7 @@ const App: React.FC = () => {
             <Route path="/error" element={<ErrorPage />} />
             <Route path="/signup" element={<SignUpForm />} />
             <Route path="*" element={<ErrorPage />} />
+            <Route path="/chat" element={<ChatPage />} />
           </Routes>
         </Router>
       </AuthProvider>

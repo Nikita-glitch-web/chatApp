@@ -31,7 +31,7 @@ export const LoginForm: React.FC = () => {
 
       try {
         await login({ email, password });
-        navigate("/tasks");
+        navigate("/chat"); // Перенаправляємо на /chat після успішного входу
         console.log("User logged in successfully");
       } catch (err) {
         setError("Login failed. Please try again.");
@@ -48,6 +48,7 @@ export const LoginForm: React.FC = () => {
     navigate("/signup");
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleGoogleSuccess = async (response: any) => {
     const token = response?.credential;
     if (!token) {
@@ -59,7 +60,7 @@ export const LoginForm: React.FC = () => {
     }
     try {
       await loginWithGoogle({ token } as GoogleAuthCredentials);
-      navigate("/tasks");
+      navigate("/chat"); // Перенаправляємо на /chat після успішного входу через Google
     } catch (err) {
       setError("Google login failed. Please try again.");
       console.error("Google Login error:", err);
@@ -81,11 +82,11 @@ export const LoginForm: React.FC = () => {
     <Box
       sx={{
         backgroundColor: "#f5f5f5",
-        width: "100vw", // Займає всю ширину вікна
-        height: "100vh", // Займає всю висоту вікна
-        display: "flex", // Вмикає режим flexbox
-        justifyContent: "center", // Центрує по горизонталі
-        alignItems: "center", // Центрує по вертикалі
+        width: "100vw",
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
         margin: 0,
         padding: 0,
       }}
@@ -102,7 +103,6 @@ export const LoginForm: React.FC = () => {
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-
           gap: 2,
         }}
       >
@@ -144,7 +144,7 @@ export const LoginForm: React.FC = () => {
         </CustomButton>
         <Box
           sx={{
-            width: "100%", // Повна ширина як у інших кнопок
+            width: "100%",
             display: "flex",
             justifyContent: "center",
           }}

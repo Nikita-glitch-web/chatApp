@@ -1,8 +1,11 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { getAnalytics } from "firebase/analytics";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
-export const firebaseConfig = {
+// Firebase конфігурація
+const firebaseConfig = {
   apiKey: "AIzaSyC-QfoLiL5tkHCtDL4lf_QUmSirTYJXBqQ",
   authDomain: "chat-app-6068c.firebaseapp.com",
   projectId: "chat-app-6068c",
@@ -12,11 +15,20 @@ export const firebaseConfig = {
   measurementId: "G-J6V5GRT82M",
 };
 
+// Ініціалізація Firebase
 const app = initializeApp(firebaseConfig);
 
+// Ініціалізація Firebase аналітики (опціонально)
+const analytics = getAnalytics(app);
+
+// Ініціалізація Firebase Functions
+const functions = getFunctions(app);
+
+// Ініціалізація Firestore і Auth
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
+// Google Auth Provider
 export const googleProvider = new GoogleAuthProvider();
 
 /**
@@ -48,3 +60,9 @@ export const signOutUser = async () => {
     throw error;
   }
 };
+
+// Серверні функції
+export const getMessages = httpsCallable(functions, "getMessages");
+export const addMessage = httpsCallable(functions, "addMessage");
+
+export { app, analytics };
