@@ -12,16 +12,17 @@ const App: React.FC = () => {
   return (
     <GoogleOAuthProvider clientId="975432713180-v1cv3mgbbmr8c9sv37ua194vph4sfm0s.apps.googleusercontent.com">
       <AuthProvider>
-        <CssBaseline />
-        <Router>
-          <Routes>
-            <Route path="/" element={<LoginForm />} />
-            <Route path="/error" element={<ErrorPage />} />
-            <Route path="/signup" element={<SignUpForm />} />
-            <Route path="*" element={<ErrorPage />} />
-            <Route path="/chat" element={<ChatPage />} />
-          </Routes>
-        </Router>
+        <CssBaseline>
+          <Router>
+            <Routes>
+              <Route path="/" element={<LoginForm />} />
+              <Route path="/error" element={<ErrorPage />} />
+              <Route path="/signup" element={<SignUpForm />} />
+              <Route path="*" element={<ErrorPage />} />
+              <Route path="/chat" element={<ChatPage />} />
+            </Routes>
+          </Router>
+        </CssBaseline>
       </AuthProvider>
     </GoogleOAuthProvider>
   );

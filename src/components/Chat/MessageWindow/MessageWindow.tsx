@@ -1,10 +1,11 @@
 import React from "react";
 import { Box, Typography, List, ListItem, Avatar } from "@mui/material";
-
+import { Timestamp } from "firebase/firestore";
 type Message = {
-  text: string;
+  text?: string;
+  imageUrl?: string;
   senderId: string;
-  timestamp: string;
+  timestamp: string | Timestamp; // Дозволяємо як рядок, так і Firebase Timestamp
 };
 
 type MessageWindowProps = {

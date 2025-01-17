@@ -4,14 +4,15 @@ import { ChatList } from "../ChatList/ChatList";
 import { MessageWindow } from "../MessageWindow/MessageWindow";
 import { MessageInput } from "../MessageInput/MessageInput";
 import { getAuth } from "firebase/auth";
-import { db } from "../../../store/firebase.config"; // Підключаємо Firebase
+import { db, storage } from "../../../store/firebase.config";
 import {
   collection,
   addDoc,
-  getDocs,
   query,
   orderBy,
+  onSnapshot,
 } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 type Chat = {
   id: string;
@@ -22,7 +23,8 @@ type Chat = {
 };
 
 type Message = {
-  text: string;
+  text?: string;
+  imageUrl?: string;
   senderId: string;
   timestamp: string;
 };
@@ -64,23 +66,39 @@ export const ChatPage: React.FC = () => {
 
   useEffect(() => {
     if (currentChat) {
-      fetchMessages();
+      const unsubscribe = subscribeToMessages();
+      return () => unsubscribe();
     }
   }, [currentChat]);
 
-  const fetchMessages = async () => {
-    if (!currentChat) return;
+  const subscribeToMessages = () => {
+    if (!currentChat) return () => {};
 
     const messagesRef = collection(db, "chats", currentChat, "messages");
     const q = query(messagesRef, orderBy("timestamp", "asc"));
-    const querySnapshot = await getDocs(q);
 
-    const loadedMessages: Message[] = [];
-    querySnapshot.forEach((doc) => {
-      loadedMessages.push(doc.data() as Message);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const loadedMessages: Message[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+
+        const message: Message = {
+          text: data.text || "",
+          imageUrl: data.imageUrl || "",
+          senderId: data.senderId || "unknown", // Default senderId if missing
+          timestamp:
+            typeof data.timestamp?.toDate === "function"
+              ? data.timestamp.toDate().toISOString()
+              : data.timestamp || new Date().toISOString(),
+        };
+
+        loadedMessages.push(message);
+      });
+
+      setMessages(loadedMessages);
     });
 
-    setMessages(loadedMessages);
+    return unsubscribe;
   };
 
   const handleSendMessage = async (text: string) => {
@@ -93,22 +111,47 @@ export const ChatPage: React.FC = () => {
     };
 
     await addDoc(collection(db, "chats", currentChat, "messages"), newMessage);
+  };
 
-    setMessages((prev) => [...prev, newMessage]);
+  const handleSendImage = async (imageFile: File) => {
+    if (!currentChat || !currentUser) return;
+
+    const imageRef = ref(storage, `chats/${currentChat}/${imageFile.name}`);
+    await uploadBytes(imageRef, imageFile);
+
+    const imageUrl = await getDownloadURL(imageRef);
+
+    const newMessage: Message = {
+      imageUrl,
+      senderId: currentUser,
+      timestamp: new Date().toISOString(),
+    };
+
+    await addDoc(collection(db, "chats", currentChat, "messages"), newMessage);
   };
 
   return (
-    <Box sx={{ display: "flex", height: "100vh" }}>
+    <Box sx={{ display: "flex", height: "100vh", width: "100vw" }}>
       <ChatList chats={chats} onSelectChat={(id) => setCurrentChat(id)} />
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
         {currentChat ? (
           <>
             <MessageWindow messages={messages} currentUser={currentUser} />
-            <MessageInput onSendMessage={handleSendMessage} />
+            <MessageInput
+              onSendMessage={handleSendMessage}
+              onSendImage={handleSendImage}
+            />
           </>
         ) : (
-          <Box sx={{ textAlign: "center", marginTop: 4 }}>
-            <p>Виберіть чат для початку листування</p>
+          <Box
+            sx={{
+              textAlign: "center",
+              marginTop: 4,
+              marginLeft: 4,
+              fontSize: "32px",
+            }}
+          >
+            <p>Select chat</p>
           </Box>
         )}
       </Box>

@@ -3,13 +3,14 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { getStorage } from "firebase/storage"; // Додано імпорт для Storage
 
 // Firebase конфігурація
 const firebaseConfig = {
   apiKey: "AIzaSyC-QfoLiL5tkHCtDL4lf_QUmSirTYJXBqQ",
   authDomain: "chat-app-6068c.firebaseapp.com",
   projectId: "chat-app-6068c",
-  storageBucket: "chat-app-6068c.firebasestorage.app",
+  storageBucket: "chat-app-6068c.appspot.com", // Виправлено storageBucket URL
   messagingSenderId: "975432713180",
   appId: "1:975432713180:web:94a76eaf6a44ba46de4519",
   measurementId: "G-J6V5GRT82M",
@@ -24,9 +25,10 @@ const analytics = getAnalytics(app);
 // Ініціалізація Firebase Functions
 const functions = getFunctions(app);
 
-// Ініціалізація Firestore і Auth
+// Ініціалізація Firestore, Auth і Storage
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app); // Експортуємо Storage
 
 // Google Auth Provider
 export const googleProvider = new GoogleAuthProvider();
