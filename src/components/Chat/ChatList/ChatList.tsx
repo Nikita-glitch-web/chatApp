@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   List,
   ListItem,
@@ -12,7 +12,7 @@ import {
   TextField,
 } from "@mui/material";
 import { db } from "../../../store/firebase.config";
-import { collection, addDoc, getDocs } from "firebase/firestore";
+import { collection, addDoc } from "firebase/firestore";
 
 type Chat = {
   id: string;
@@ -21,12 +21,13 @@ type Chat = {
   lastMessage: string;
   time: string;
   unreadCount?: number;
+  members: string[]; // Обов'язкове поле
 };
 
 type ChatListProps = {
   chats: Chat[];
   onSelectChat: (id: string) => void;
-  onNewChatCreated: (chat: Chat) => void;
+  onNewChatCreated: (chat: Chat) => Promise<void>; // Підтримка асинхронності
 };
 
 export const ChatList: React.FC<ChatListProps> = ({
@@ -36,51 +37,35 @@ export const ChatList: React.FC<ChatListProps> = ({
 }) => {
   const [showCreateChatForm, setShowCreateChatForm] = useState<boolean>(false);
   const [newChatName, setNewChatName] = useState<string>("");
-  const [newChatUsers, setNewChatUsers] = useState<string[]>([]);
+  const [newChatUsers, setNewChatUsers] = useState<string>("");
 
-  // Завантаження чатів з Firestore при монтуванні компонента
-  useEffect(() => {
-    const loadChats = async () => {
-      const chatCollection = collection(db, "chats");
-      const chatSnapshot = await getDocs(chatCollection);
-      const loadedChats: Chat[] = chatSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Chat[];
-
-      loadedChats.forEach((chat: Chat) => onNewChatCreated(chat));
-    };
-
-    loadChats();
-  }, [onNewChatCreated]);
-
-  // Додавання нового чату в Firestore
   const handleCreateChat = async () => {
-    if (!newChatName || newChatUsers.length === 0) return;
+    if (!newChatName || !newChatUsers) return;
 
-    // Створення нового чату в Firestore
-    const newChatRef = await addDoc(collection(db, "chats"), {
+    const usersArray = newChatUsers.split(",").map((user) => user.trim());
+    const newChatData = {
       name: newChatName,
-      users: newChatUsers,
+      avatar: "", // Можна додати аватар, якщо потрібно
       lastMessage: "",
       time: "",
-    });
+      members: usersArray,
+    };
+
+    // Додаємо новий чат у Firestore
+    const newChatRef = await addDoc(collection(db, "chats"), newChatData);
 
     const newChat: Chat = {
       id: newChatRef.id,
-      name: newChatName,
-      avatar: "", // можна додавати аватар, якщо є
-      lastMessage: "",
-      time: "",
+      ...newChatData,
     };
 
-    // Викликаємо callback для оновлення списку чатів
-    onNewChatCreated(newChat);
+    // Передаємо новий чат у батьківський компонент
+    await onNewChatCreated(newChat);
 
-    // Очистити форму після створення чату
+    // Очищаємо форму
     setNewChatName("");
-    setNewChatUsers([]);
-    setShowCreateChatForm(false); // Сховати форму
+    setNewChatUsers("");
+    setShowCreateChatForm(false);
   };
 
   return (
@@ -143,7 +128,6 @@ export const ChatList: React.FC<ChatListProps> = ({
         ))}
       </List>
 
-      {/* Кнопка для створення нового чату */}
       {!showCreateChatForm && (
         <Button
           onClick={() => setShowCreateChatForm(true)}
@@ -155,7 +139,6 @@ export const ChatList: React.FC<ChatListProps> = ({
         </Button>
       )}
 
-      {/* Форма для створення нового чату */}
       {showCreateChatForm && (
         <Box sx={{ marginTop: 4, padding: 2 }}>
           <TextField
@@ -167,12 +150,8 @@ export const ChatList: React.FC<ChatListProps> = ({
           />
           <TextField
             label="Users (comma separated)"
-            value={newChatUsers.join(", ")}
-            onChange={(e) =>
-              setNewChatUsers(
-                e.target.value.split(",").map((user) => user.trim())
-              )
-            }
+            value={newChatUsers}
+            onChange={(e) => setNewChatUsers(e.target.value)}
             fullWidth
             margin="normal"
           />

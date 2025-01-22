@@ -12,9 +12,9 @@ import {
   orderBy,
   onSnapshot,
   doc,
-  setDoc,
   getDocs,
   where,
+  updateDoc,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -24,6 +24,7 @@ type Chat = {
   avatar: string;
   lastMessage: string;
   time: string;
+  members: string[];
 };
 
 type Message = {
@@ -41,13 +42,15 @@ export const ChatPage: React.FC = () => {
 
   const auth = getAuth();
 
-  // Завантаження чатів з Firestore при монтуванні компонента
   useEffect(() => {
     const loadChats = async () => {
       if (!currentUser) return;
 
       const chatsRef = collection(db, "chats");
-      const q = query(chatsRef, where("users", "array-contains", currentUser));
+      const q = query(
+        chatsRef,
+        where("members", "array-contains", currentUser)
+      );
 
       const chatSnapshots = await getDocs(q);
       const loadedChats: Chat[] = chatSnapshots.docs.map((doc) => {
@@ -58,6 +61,7 @@ export const ChatPage: React.FC = () => {
           avatar: data.avatar || "",
           lastMessage: data.lastMessage || "",
           time: data.time || "",
+          members: data.members || [],
         };
       });
 
@@ -69,7 +73,6 @@ export const ChatPage: React.FC = () => {
     }
   }, [currentUser]);
 
-  // Автентифікація користувача
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
@@ -81,7 +84,6 @@ export const ChatPage: React.FC = () => {
     return () => unsubscribe();
   }, [auth]);
 
-  // Підписка на повідомлення в чаті
   useEffect(() => {
     if (currentChat) {
       const unsubscribe = subscribeToMessages();
@@ -99,7 +101,6 @@ export const ChatPage: React.FC = () => {
       const loadedMessages: Message[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
-
         const message: Message = {
           text: data.text || "",
           imageUrl: data.imageUrl || "",
@@ -109,17 +110,15 @@ export const ChatPage: React.FC = () => {
               ? data.timestamp.toDate().toISOString()
               : data.timestamp || new Date().toISOString(),
         };
-
         loadedMessages.push(message);
       });
 
       setMessages(loadedMessages);
     });
 
-    return unsubscribe;
+    return unsubscribe; // Повертаємо функцію для відписки
   };
 
-  // Обробка відправки текстового повідомлення
   const handleSendMessage = async (text: string) => {
     if (!currentChat || !currentUser) return;
 
@@ -131,14 +130,11 @@ export const ChatPage: React.FC = () => {
 
     await addDoc(collection(db, "chats", currentChat, "messages"), newMessage);
 
-    // Оновити останнє повідомлення в чаті
     await updateLastMessage(text);
 
-    // Додати нове повідомлення до локального стану
     setMessages((prevMessages) => [...prevMessages, newMessage]);
   };
 
-  // Обробка відправки зображення
   const handleSendImage = async (imageFile: File) => {
     if (!currentChat || !currentUser) return;
 
@@ -155,40 +151,25 @@ export const ChatPage: React.FC = () => {
 
     await addDoc(collection(db, "chats", currentChat, "messages"), newMessage);
 
-    // Оновити останнє повідомлення в чаті
     await updateLastMessage("Image sent");
   };
 
-  // Оновити останнє повідомлення в чаті
   const updateLastMessage = async (message: string) => {
     if (!currentChat) return;
 
     const chatRef = doc(db, "chats", currentChat);
-    await setDoc(
-      chatRef,
-      { lastMessage: message, time: new Date().toLocaleTimeString() },
-      { merge: true }
-    );
+    await updateDoc(chatRef, {
+      lastMessage: message,
+      time: new Date().toLocaleTimeString(),
+    });
   };
 
-  // Обробка вибору чату
   const handleSelectChat = (chatId: string) => {
     setCurrentChat(chatId);
   };
 
-  // Обробка створення нового чату
-  const handleNewChatCreated = (newChat: Chat) => {
-    setChats((prevChats) => {
-      // Перевірка, чи вже є чат з таким id
-      const chatExists = prevChats.some((chat) => chat.id === newChat.id);
-
-      if (chatExists) {
-        return prevChats; // Якщо чат уже є, не додаємо новий
-      }
-
-      const updatedChats = [...prevChats, newChat];
-      return updatedChats;
-    });
+  const handleNewChatCreated = async (newChat: Chat) => {
+    setChats((prevChats) => [...prevChats, newChat]);
   };
 
   return (
@@ -196,7 +177,7 @@ export const ChatPage: React.FC = () => {
       <ChatList
         chats={chats}
         onSelectChat={handleSelectChat}
-        onNewChatCreated={handleNewChatCreated} // Передаємо обробник створення чату
+        onNewChatCreated={handleNewChatCreated}
       />
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
         {currentChat ? (

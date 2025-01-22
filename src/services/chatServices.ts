@@ -19,7 +19,7 @@ export type Message = {
   chatId: string; // ID чату, до якого належить повідомлення
 };
 
-// Отримання повідомлень з Firestore
+// Функція для отримання повідомлень з Firestore
 export async function fetchMessages(chatId: string): Promise<Message[]> {
   try {
     const messagesQuery = query(
@@ -41,7 +41,7 @@ export async function fetchMessages(chatId: string): Promise<Message[]> {
   }
 }
 
-// Додавання повідомлення в Firestore
+// Функція для додавання повідомлення в Firestore
 export async function sendMessage(
   chatId: string,
   senderId: string,
@@ -49,13 +49,12 @@ export async function sendMessage(
   text: string
 ): Promise<void> {
   try {
-    const message: Message = {
+    const message: Omit<Message, "id"> = {
       senderId,
       receiverId,
       text,
       timestamp: Date.now(),
       chatId,
-      id: "",
     };
 
     // Додаємо повідомлення в колекцію `messages`
@@ -67,7 +66,7 @@ export async function sendMessage(
   }
 }
 
-// Функція для прослуховування нових повідомлень в реальному часі
+// Функція для прослуховування нових повідомлень у реальному часі
 export function listenForMessages(
   chatId: string,
   callback: (messages: Message[]) => void
@@ -88,4 +87,43 @@ export function listenForMessages(
     // Викликаємо колбек з новими повідомленнями
     callback(messages);
   });
+}
+
+// Функція для отримання чатів користувача
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function fetchUserChats(userId: string): Promise<any[]> {
+  try {
+    const chatsQuery = query(
+      collection(db, "chats"),
+      where("members", "array-contains", userId) // Фільтруємо за UID користувача
+    );
+
+    const querySnapshot = await getDocs(chatsQuery);
+
+    const chats = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    return chats;
+  } catch (error) {
+    console.error("Error fetching user chats:", error);
+    return [];
+  }
+}
+
+// Функція для створення нового чату
+export async function createChat(members: string[]): Promise<void> {
+  try {
+    const chatData = {
+      members, // Масив UID учасників
+      createdAt: Date.now(),
+    };
+
+    await addDoc(collection(db, "chats"), chatData);
+
+    console.log("Chat created successfully");
+  } catch (error) {
+    console.error("Error creating chat:", error);
+  }
 }
