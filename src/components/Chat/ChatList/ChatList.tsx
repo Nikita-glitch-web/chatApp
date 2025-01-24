@@ -11,29 +11,21 @@ import {
   Button,
   TextField,
 } from "@mui/material";
-import { db } from "../../../store/firebase.config";
-import { collection, addDoc } from "firebase/firestore";
-
-type Chat = {
-  id: string;
-  name: string;
-  avatar: string;
-  lastMessage: string;
-  time: string;
-  unreadCount?: number;
-  members: string[]; // Обов'язкове поле
-};
+import { Chat } from "../../../store/useChatStore";
 
 type ChatListProps = {
   chats: Chat[];
   onSelectChat: (id: string) => void;
-  onNewChatCreated: (chat: Chat) => Promise<void>; // Підтримка асинхронності
+  onCreateChat: (name: string, users: string[]) => Promise<void>;
+  onNewChatCreated?: (chat: Chat) => void; // Додано
 };
 
 export const ChatList: React.FC<ChatListProps> = ({
   chats,
   onSelectChat,
-  onNewChatCreated,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onCreateChat,
+  onNewChatCreated, // Додано
 }) => {
   const [showCreateChatForm, setShowCreateChatForm] = useState<boolean>(false);
   const [newChatName, setNewChatName] = useState<string>("");
@@ -43,26 +35,20 @@ export const ChatList: React.FC<ChatListProps> = ({
     if (!newChatName || !newChatUsers) return;
 
     const usersArray = newChatUsers.split(",").map((user) => user.trim());
-    const newChatData = {
+    const newChat: Chat = {
+      id: `${new Date().getTime()}`, // Генеруємо унікальний ID
       name: newChatName,
-      avatar: "", // Можна додати аватар, якщо потрібно
+      avatar: "",
       lastMessage: "",
       time: "",
       members: usersArray,
+      unreadCount: null, // Додано опціональне значення
     };
 
-    // Додаємо новий чат у Firestore
-    const newChatRef = await addDoc(collection(db, "chats"), newChatData);
+    if (onNewChatCreated) {
+      onNewChatCreated(newChat); // Викликаємо функцію
+    }
 
-    const newChat: Chat = {
-      id: newChatRef.id,
-      ...newChatData,
-    };
-
-    // Передаємо новий чат у батьківський компонент
-    await onNewChatCreated(newChat);
-
-    // Очищаємо форму
     setNewChatName("");
     setNewChatUsers("");
     setShowCreateChatForm(false);

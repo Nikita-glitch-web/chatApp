@@ -104,7 +104,7 @@ export async function fetchUserChats(userId: string): Promise<any[]> {
       id: doc.id,
       ...doc.data(),
     }));
-
+    console.log(chats);
     return chats;
   } catch (error) {
     console.error("Error fetching user chats:", error);
