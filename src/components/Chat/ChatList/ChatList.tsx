@@ -10,6 +10,10 @@ import {
   Typography,
   Button,
   TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import { Chat } from "../../../store/useChatStore";
 
@@ -17,41 +21,59 @@ type ChatListProps = {
   chats: Chat[];
   onSelectChat: (id: string) => void;
   onCreateChat: (name: string, users: string[]) => Promise<void>;
-  onNewChatCreated?: (chat: Chat) => void; // Додано
+  onUpdateChat: (id: string, name: string, users: string[]) => Promise<void>;
 };
 
 export const ChatList: React.FC<ChatListProps> = ({
   chats,
   onSelectChat,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onCreateChat,
-  onNewChatCreated, // Додано
+  onUpdateChat,
 }) => {
   const [showCreateChatForm, setShowCreateChatForm] = useState<boolean>(false);
   const [newChatName, setNewChatName] = useState<string>("");
   const [newChatUsers, setNewChatUsers] = useState<string>("");
 
+  const [editingChat, setEditingChat] = useState<Chat | null>(null);
+  const [editChatName, setEditChatName] = useState<string>("");
+  const [editChatUsers, setEditChatUsers] = useState<string>("");
+
   const handleCreateChat = async () => {
     if (!newChatName || !newChatUsers) return;
 
     const usersArray = newChatUsers.split(",").map((user) => user.trim());
-    const newChat: Chat = {
-      id: `${new Date().getTime()}`, // Генеруємо унікальний ID
-      name: newChatName,
-      avatar: "",
-      lastMessage: "",
-      time: "",
-      members: usersArray,
-      unreadCount: null, // Додано опціональне значення
-    };
 
-    if (onNewChatCreated) {
-      onNewChatCreated(newChat); // Викликаємо функцію
+    try {
+      await onCreateChat(newChatName, usersArray);
+      setNewChatName("");
+      setNewChatUsers("");
+      setShowCreateChatForm(false);
+    } catch (error) {
+      console.error("Error creating chat:", error);
     }
+  };
 
-    setNewChatName("");
-    setNewChatUsers("");
-    setShowCreateChatForm(false);
+  const handleEditChat = (chat: Chat) => {
+    setEditingChat(chat);
+    setEditChatName(chat.name);
+    setEditChatUsers("");
+  };
+
+  const handleUpdateChat = async () => {
+    if (!editingChat || !editChatName) return;
+
+    const usersArray = editChatUsers
+      ? editChatUsers.split(",").map((user) => user.trim())
+      : [];
+
+    try {
+      await onUpdateChat(editingChat.id, editChatName, usersArray);
+      setEditingChat(null);
+      setEditChatName("");
+      setEditChatUsers("");
+    } catch (error) {
+      console.error("Error updating chat:", error);
+    }
   };
 
   return (
@@ -81,6 +103,7 @@ export const ChatList: React.FC<ChatListProps> = ({
             key={chat.id}
             component="a"
             onClick={() => onSelectChat(chat.id)}
+            onDoubleClick={() => handleEditChat(chat)}
             sx={{
               display: "flex",
               alignItems: "center",
@@ -119,7 +142,7 @@ export const ChatList: React.FC<ChatListProps> = ({
           onClick={() => setShowCreateChatForm(true)}
           variant="contained"
           color="primary"
-          sx={{ marginTop: 4 }}
+          sx={{ marginTop: 4, marginLeft: "18px" }}
         >
           Create Chat
         </Button>
@@ -150,6 +173,40 @@ export const ChatList: React.FC<ChatListProps> = ({
             Create Chat
           </Button>
         </Box>
+      )}
+
+      {editingChat && (
+        <Dialog open={!!editingChat} onClose={() => setEditingChat(null)}>
+          <DialogTitle>Edit Chat</DialogTitle>
+          <DialogContent>
+            <TextField
+              label="Chat Name"
+              value={editChatName}
+              onChange={(e) => setEditChatName(e.target.value)}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              label="Add Users (comma separated)"
+              value={editChatUsers}
+              onChange={(e) => setEditChatUsers(e.target.value)}
+              fullWidth
+              margin="normal"
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditingChat(null)} color="secondary">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateChat}
+              variant="contained"
+              color="primary"
+            >
+              Save Changes
+            </Button>
+          </DialogActions>
+        </Dialog>
       )}
     </Box>
   );

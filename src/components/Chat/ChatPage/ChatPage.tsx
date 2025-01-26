@@ -13,6 +13,7 @@ import {
   Chat,
   Message,
 } from "../../../store/useChatStore";
+import { console } from "inspector";
 
 export const ChatPage: React.FC = () => {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -64,7 +65,7 @@ export const ChatPage: React.FC = () => {
   };
 
   // Створення нового чату
-  const handleNewChatCreated = async (name: string, users: string[]) => {
+  const handleCreateChat = async (name: string, users: string[]) => {
     if (!currentUser) return;
 
     try {
@@ -75,12 +76,41 @@ export const ChatPage: React.FC = () => {
     }
   };
 
+  // Оновлення чату
+  const handleUpdateChat = async (
+    id: string,
+    name: string,
+    users: string[]
+  ) => {
+    try {
+      // Реалізуйте оновлення чату у Firestore або в локальному стані
+      const updatedChat = {
+        id,
+        name,
+        avatar: "", // Якщо потрібно, можна додати обробку аватара
+        members: users,
+      };
+
+      // Оновлення списку чатів
+      setChats((prevChats) =>
+        prevChats.map((chat) =>
+          chat.id === id
+            ? { ...chat, ...updatedChat } // Зберігаємо інші властивості чату
+            : chat
+        )
+      );
+    } catch (error) {
+      console.error("Error updating chat:", error);
+    }
+  };
+
   return (
     <Box sx={{ display: "flex", height: "100vh", width: "100vw" }}>
       <ChatList
         chats={chats}
         onSelectChat={handleSelectChat}
-        onNewChatCreated={handleNewChatCreated}
+        onCreateChat={handleCreateChat} // Використовуємо handleCreateChat
+        onUpdateChat={handleUpdateChat} // Передаємо handleUpdateChat
       />
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
         {currentChat ? (

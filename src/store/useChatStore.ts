@@ -30,7 +30,7 @@ export type Message = {
   timestamp: string;
 };
 
-// Завантаження списку чатів для користувача
+// Завантаження списку чатів для користувача з Firestore
 export const loadChats = async (userId: string): Promise<Chat[]> => {
   const chatsRef = collection(db, "chats");
   const q = query(chatsRef, where("members", "array-contains", userId));
@@ -48,6 +48,32 @@ export const loadChats = async (userId: string): Promise<Chat[]> => {
       unreadCount: 0, // Додаємо значення за замовчуванням
     };
   });
+};
+
+// Збереження списку чатів у Firestore
+export const saveChats = async (
+  userId: string,
+  chats: Chat[]
+): Promise<void> => {
+  const userChatsRef = doc(db, "userChats", userId);
+  await updateDoc(userChatsRef, { chats });
+};
+
+// Отримання кешованих чатів із Firestore
+export const getCachedChats = async (
+  userId: string
+): Promise<Chat[] | null> => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const userChatsRef = doc(db, "userChats", userId);
+
+  const userChatsDoc = await getDocs(
+    query(collection(db, "userChats"), where("id", "==", userId))
+  );
+  if (!userChatsDoc.empty) {
+    const userChatsData = userChatsDoc.docs[0].data();
+    return userChatsData.chats || null;
+  }
+  return null;
 };
 
 // Підписка на повідомлення в чаті
@@ -122,7 +148,44 @@ const updateLastMessage = async (chatId: string, message: string) => {
   });
 };
 
-// Створення нового чату
+// Пошук UID за email
+export const getUIDByEmail = async (email: string): Promise<string | null> => {
+  const usersRef = collection(db, "users");
+  const q = query(usersRef, where("email", "==", email));
+  const snapshot = await getDocs(q);
+
+  if (!snapshot.empty) {
+    const userDoc = snapshot.docs[0];
+    return userDoc.id; // UID користувача
+  }
+  return null; // Якщо користувач не знайдений
+};
+
+// Створення нового чату з email користувачів
+export const createChatWithEmails = async (
+  chatName: string,
+  userEmails: string[]
+): Promise<Chat | null> => {
+  const userUIDs: string[] = [];
+
+  for (const email of userEmails) {
+    const uid = await getUIDByEmail(email);
+    if (uid) {
+      userUIDs.push(uid);
+    } else {
+      console.error(`User with email ${email} not found`);
+    }
+  }
+
+  if (userUIDs.length > 0) {
+    return createChat(chatName, userUIDs); // Викликає існуючу функцію створення чату
+  } else {
+    console.error("No valid users to add to the chat.");
+    return null;
+  }
+};
+
+// Існуюча функція створення чату
 export const createChat = async (
   name: string,
   members: string[]
