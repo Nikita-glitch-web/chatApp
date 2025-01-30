@@ -1,11 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   List,
   ListItem,
   ListItemAvatar,
   Avatar,
   ListItemText,
-  Badge,
   Box,
   Typography,
   Button,
@@ -14,14 +13,23 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Snackbar,
+  Alert,
+  IconButton,
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { Chat } from "../../../store/useChatStore";
+import { listenForUserChats } from "../../../services/chatServices";
+import { auth } from "../../../store/firebase.config";
 
+// Оновлені типи для пропсів
 type ChatListProps = {
-  chats: Chat[];
-  onSelectChat: (id: string) => void;
-  onCreateChat: (name: string, users: string[]) => Promise<void>;
-  onUpdateChat: (id: string, name: string, users: string[]) => Promise<void>;
+  chats: Chat[]; // Список чатів
+  onSelectChat: (id: string) => void; // Функція для вибору чату
+  onCreateChat: (name: string, users: string[]) => Promise<void>; // Функція для створення чату
+  onUpdateChat: (id: string, name: string, users: string[]) => Promise<void>; // Функція для оновлення чату
+  onAddUserToChat: (chatId: string, userEmail: string) => Promise<void>; // Функція для додавання користувача
+  onDeleteChat: (id: string) => void; // Функція для видалення чату
 };
 
 export const ChatList: React.FC<ChatListProps> = ({
@@ -29,51 +37,65 @@ export const ChatList: React.FC<ChatListProps> = ({
   onSelectChat,
   onCreateChat,
   onUpdateChat,
+  onAddUserToChat,
+  onDeleteChat,
 }) => {
-  const [showCreateChatForm, setShowCreateChatForm] = useState<boolean>(false);
-  const [newChatName, setNewChatName] = useState<string>("");
-  const [newChatUsers, setNewChatUsers] = useState<string>("");
-
+  const [showCreateChatForm, setShowCreateChatForm] = useState(false);
+  const [newChatName, setNewChatName] = useState("");
+  const [newChatUsers, setNewChatUsers] = useState("");
   const [editingChat, setEditingChat] = useState<Chat | null>(null);
-  const [editChatName, setEditChatName] = useState<string>("");
-  const [editChatUsers, setEditChatUsers] = useState<string>("");
+  const [editChatName, setEditChatName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error",
+  });
+
+  useEffect(() => {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const unsubscribe = listenForUserChats(userId, (chatsData) => {
+      // Тут обробка вже з переданим списком chats
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const showError = (message: string) =>
+    setSnackbar({ open: true, message, severity: "error" });
 
   const handleCreateChat = async () => {
-    if (!newChatName || !newChatUsers) return;
-
+    if (!newChatName || !newChatUsers)
+      return showError("Please fill in all fields!");
     const usersArray = newChatUsers.split(",").map((user) => user.trim());
-
-    try {
-      await onCreateChat(newChatName, usersArray);
-      setNewChatName("");
-      setNewChatUsers("");
-      setShowCreateChatForm(false);
-    } catch (error) {
-      console.error("Error creating chat:", error);
-    }
-  };
-
-  const handleEditChat = (chat: Chat) => {
-    setEditingChat(chat);
-    setEditChatName(chat.name);
-    setEditChatUsers("");
+    await onCreateChat(newChatName, usersArray);
+    setSnackbar({
+      open: true,
+      message: "Chat created successfully",
+      severity: "success",
+    });
+    setNewChatName("");
+    setNewChatUsers("");
+    setShowCreateChatForm(false);
   };
 
   const handleUpdateChat = async () => {
-    if (!editingChat || !editChatName) return;
+    if (!editingChat) return showError("No chat selected to edit!");
+    await onUpdateChat(editingChat.id, editChatName || editingChat.name, []);
+    setSnackbar({ open: true, message: "Chat updated", severity: "success" });
+    setEditingChat(null);
+    setEditChatName("");
+  };
 
-    const usersArray = editChatUsers
-      ? editChatUsers.split(",").map((user) => user.trim())
-      : [];
-
-    try {
-      await onUpdateChat(editingChat.id, editChatName, usersArray);
-      setEditingChat(null);
-      setEditChatName("");
-      setEditChatUsers("");
-    } catch (error) {
-      console.error("Error updating chat:", error);
-    }
+  const handleAddUser = async () => {
+    if (!editingChat || !newUserEmail)
+      return showError("Please provide a valid email and select a chat!");
+    await onAddUserToChat(editingChat.id, newUserEmail);
+    setSnackbar({ open: true, message: "User added", severity: "success" });
+    setNewUserEmail("");
   };
 
   return (
@@ -86,6 +108,13 @@ export const ChatList: React.FC<ChatListProps> = ({
         backgroundColor: "#f9f9f9",
       }}
     >
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+      >
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
       <Typography
         variant="h6"
         sx={{
@@ -103,7 +132,7 @@ export const ChatList: React.FC<ChatListProps> = ({
             key={chat.id}
             component="a"
             onClick={() => onSelectChat(chat.id)}
-            onDoubleClick={() => handleEditChat(chat)}
+            onDoubleClick={() => setEditingChat(chat)}
             sx={{
               display: "flex",
               alignItems: "center",
@@ -126,17 +155,20 @@ export const ChatList: React.FC<ChatListProps> = ({
                 "& .MuiListItemText-secondary": { color: "#666" },
               }}
             />
-            {chat.unreadCount && (
-              <Badge
-                badgeContent={chat.unreadCount}
-                color="primary"
-                sx={{ marginLeft: "auto" }}
-              />
-            )}
+            {/* Іконка для видалення чату */}
+            <IconButton
+              onClick={(e) => {
+                e.stopPropagation(); // Запобігаємо вибору чату при натисканні на кнопку
+                onDeleteChat(chat.id);
+              }}
+              color="error"
+              sx={{ marginLeft: "auto" }}
+            >
+              <DeleteIcon />
+            </IconButton>
           </ListItem>
         ))}
       </List>
-
       {!showCreateChatForm && (
         <Button
           onClick={() => setShowCreateChatForm(true)}
@@ -147,7 +179,6 @@ export const ChatList: React.FC<ChatListProps> = ({
           Create Chat
         </Button>
       )}
-
       {showCreateChatForm && (
         <Box sx={{ marginTop: 4, padding: 2 }}>
           <TextField
@@ -174,22 +205,21 @@ export const ChatList: React.FC<ChatListProps> = ({
           </Button>
         </Box>
       )}
-
       {editingChat && (
         <Dialog open={!!editingChat} onClose={() => setEditingChat(null)}>
           <DialogTitle>Edit Chat</DialogTitle>
           <DialogContent>
             <TextField
               label="Chat Name"
-              value={editChatName}
+              value={editChatName || editingChat.name}
               onChange={(e) => setEditChatName(e.target.value)}
               fullWidth
               margin="normal"
             />
             <TextField
-              label="Add Users (comma separated)"
-              value={editChatUsers}
-              onChange={(e) => setEditChatUsers(e.target.value)}
+              label="Add User by Email"
+              value={newUserEmail}
+              onChange={(e) => setNewUserEmail(e.target.value)}
               fullWidth
               margin="normal"
             />
@@ -197,6 +227,14 @@ export const ChatList: React.FC<ChatListProps> = ({
           <DialogActions>
             <Button onClick={() => setEditingChat(null)} color="secondary">
               Cancel
+            </Button>
+            <Button
+              onClick={handleAddUser}
+              variant="contained"
+              color="primary"
+              sx={{ marginRight: 2 }}
+            >
+              Add User
             </Button>
             <Button
               onClick={handleUpdateChat}

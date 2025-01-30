@@ -9,10 +9,12 @@ import {
   getDocs,
   where,
   updateDoc,
+  arrayUnion,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { ReactNode } from "react";
 
+// Типи для чату та повідомлення
 export type Chat = {
   unreadCount: ReactNode;
   id: string;
@@ -34,49 +36,104 @@ export type Message = {
 export const loadChats = async (userId: string): Promise<Chat[]> => {
   const chatsRef = collection(db, "chats");
   const q = query(chatsRef, where("members", "array-contains", userId));
+  const querySnapshot = await getDocs(q);
 
-  const chatSnapshots = await getDocs(q);
-  return chatSnapshots.docs.map((doc) => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      name: data.name,
-      avatar: data.avatar || "",
-      lastMessage: data.lastMessage || "",
-      time: data.time || "",
-      members: data.members || [],
-      unreadCount: 0, // Додаємо значення за замовчуванням
-    };
+  return querySnapshot.docs.map(
+    (doc) =>
+      ({
+        id: doc.id,
+        ...doc.data(),
+      } as Chat)
+  );
+};
+
+// Функція для прослуховування змін у чатах користувача
+export const listenForUserChats = (
+  userId: string,
+  callback: (chats: Chat[]) => void
+) => {
+  const chatsQuery = query(
+    collection(db, "chats"),
+    where("members", "array-contains", userId)
+  );
+
+  return onSnapshot(chatsQuery, (querySnapshot) => {
+    const chats = querySnapshot.docs.map(
+      (doc) =>
+        ({
+          id: doc.id,
+          ...doc.data(),
+        } as Chat)
+    );
+    callback(chats);
   });
 };
 
-// Збереження списку чатів у Firestore
-export const saveChats = async (
-  userId: string,
-  chats: Chat[]
-): Promise<void> => {
-  const userChatsRef = doc(db, "userChats", userId);
-  await updateDoc(userChatsRef, { chats });
+// Додавання нового користувача в чат
+export const addUserToChat = async (chatId: string, userId: string) => {
+  const chatRef = doc(db, "chats", chatId);
+  await updateDoc(chatRef, {
+    members: arrayUnion(userId), // Додає користувача до members
+  });
 };
 
-// Отримання кешованих чатів із Firestore
-export const getCachedChats = async (
-  userId: string
-): Promise<Chat[] | null> => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const userChatsRef = doc(db, "userChats", userId);
+// Створення нового чату
+export const createChat = async (
+  name: string,
+  members: string[]
+): Promise<Chat> => {
+  const newChatData = {
+    name,
+    avatar: "", // Опціонально: URL до аватару
+    lastMessage: "",
+    time: "",
+    members,
+  };
 
-  const userChatsDoc = await getDocs(
-    query(collection(db, "userChats"), where("id", "==", userId))
-  );
-  if (!userChatsDoc.empty) {
-    const userChatsData = userChatsDoc.docs[0].data();
-    return userChatsData.chats || null;
+  const newChatRef = await addDoc(collection(db, "chats"), newChatData);
+
+  return {
+    id: newChatRef.id,
+    ...newChatData,
+    unreadCount: 0,
+  };
+};
+
+// Додавання користувача в чат через email
+export const addUserToChatByEmail = async (
+  chatId: string,
+  email: string
+): Promise<void> => {
+  const userUID = await getUIDByEmail(email);
+  if (userUID) {
+    await addUserToChat(chatId, userUID);
+  } else {
+    console.error(`User with email ${email} not found.`);
+  }
+};
+
+// Пошук UID за email
+export const getUIDByEmail = async (email: string): Promise<string | null> => {
+  const usersRef = collection(db, "users");
+  const q = query(usersRef, where("email", "==", email));
+  const snapshot = await getDocs(q);
+
+  if (!snapshot.empty) {
+    return snapshot.docs[0].id;
   }
   return null;
 };
 
-// Підписка на повідомлення в чаті
+// Оновлення останнього повідомлення в чаті
+const updateLastMessage = async (chatId: string, message: string) => {
+  const chatRef = doc(db, "chats", chatId);
+  await updateDoc(chatRef, {
+    lastMessage: message,
+    time: new Date().toISOString(),
+  });
+};
+
+// Завантаження повідомлень для чату
 export const subscribeToMessages = (
   chatId: string,
   callback: (messages: Message[]) => void
@@ -139,70 +196,13 @@ export const sendImage = async (
   await updateLastMessage(chatId, "Image sent");
 };
 
-// Оновлення останнього повідомлення в чаті
-const updateLastMessage = async (chatId: string, message: string) => {
+// Оновлення інформації про чат (наприклад, назви чату або членів)
+export const updateChat = async (
+  chatId: string,
+  newChatNameToSave: string,
+  p0: never[],
+  updatedData: Partial<Chat>
+) => {
   const chatRef = doc(db, "chats", chatId);
-  await updateDoc(chatRef, {
-    lastMessage: message,
-    time: new Date().toLocaleTimeString(),
-  });
-};
-
-// Пошук UID за email
-export const getUIDByEmail = async (email: string): Promise<string | null> => {
-  const usersRef = collection(db, "users");
-  const q = query(usersRef, where("email", "==", email));
-  const snapshot = await getDocs(q);
-
-  if (!snapshot.empty) {
-    const userDoc = snapshot.docs[0];
-    return userDoc.id; // UID користувача
-  }
-  return null; // Якщо користувач не знайдений
-};
-
-// Створення нового чату з email користувачів
-export const createChatWithEmails = async (
-  chatName: string,
-  userEmails: string[]
-): Promise<Chat | null> => {
-  const userUIDs: string[] = [];
-
-  for (const email of userEmails) {
-    const uid = await getUIDByEmail(email);
-    if (uid) {
-      userUIDs.push(uid);
-    } else {
-      console.error(`User with email ${email} not found`);
-    }
-  }
-
-  if (userUIDs.length > 0) {
-    return createChat(chatName, userUIDs); // Викликає існуючу функцію створення чату
-  } else {
-    console.error("No valid users to add to the chat.");
-    return null;
-  }
-};
-
-// Існуюча функція створення чату
-export const createChat = async (
-  name: string,
-  members: string[]
-): Promise<Chat> => {
-  const newChatData = {
-    name,
-    avatar: "", // Опціонально можна додати URL до аватару
-    lastMessage: "",
-    time: "",
-    members,
-  };
-
-  const newChatRef = await addDoc(collection(db, "chats"), newChatData);
-
-  return {
-    id: newChatRef.id,
-    ...newChatData,
-    unreadCount: 0,
-  };
+  await updateDoc(chatRef, updatedData);
 };

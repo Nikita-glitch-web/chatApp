@@ -10,10 +10,11 @@ import {
   sendMessage,
   sendImage,
   createChat,
+  addUserToChatByEmail,
   Chat,
   Message,
 } from "../../../store/useChatStore";
-import { console } from "inspector";
+import { deleteChat } from "../../../services/chatServices";
 
 export const ChatPage: React.FC = () => {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -23,7 +24,6 @@ export const ChatPage: React.FC = () => {
 
   const auth = getAuth();
 
-  // Завантаження користувача та чатів
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
@@ -37,7 +37,6 @@ export const ChatPage: React.FC = () => {
     return () => unsubscribe();
   }, [auth]);
 
-  // Підписка на повідомлення обраного чату
   useEffect(() => {
     if (currentChat) {
       const unsubscribe = subscribeToMessages(currentChat, setMessages);
@@ -45,26 +44,22 @@ export const ChatPage: React.FC = () => {
     }
   }, [currentChat]);
 
-  // Відправлення текстового повідомлення
   const handleSendMessage = (text: string) => {
     if (currentChat && currentUser) {
       sendMessage(currentChat, currentUser, text);
     }
   };
 
-  // Відправлення зображення
   const handleSendImage = (imageFile: File) => {
     if (currentChat && currentUser) {
       sendImage(currentChat, currentUser, imageFile);
     }
   };
 
-  // Вибір чату
   const handleSelectChat = (chatId: string) => {
     setCurrentChat(chatId);
   };
 
-  // Створення нового чату
   const handleCreateChat = async (name: string, users: string[]) => {
     if (!currentUser) return;
 
@@ -76,31 +71,45 @@ export const ChatPage: React.FC = () => {
     }
   };
 
-  // Оновлення чату
   const handleUpdateChat = async (
     id: string,
     name: string,
     users: string[]
   ) => {
     try {
-      // Реалізуйте оновлення чату у Firestore або в локальному стані
       const updatedChat = {
         id,
         name,
-        avatar: "", // Якщо потрібно, можна додати обробку аватара
+        avatar: "",
         members: users,
       };
 
-      // Оновлення списку чатів
       setChats((prevChats) =>
         prevChats.map((chat) =>
-          chat.id === id
-            ? { ...chat, ...updatedChat } // Зберігаємо інші властивості чату
-            : chat
+          chat.id === id ? { ...chat, ...updatedChat } : chat
         )
       );
     } catch (error) {
       console.error("Error updating chat:", error);
+    }
+  };
+
+  const handleAddUserToChat = async (chatId: string, userEmail: string) => {
+    try {
+      await addUserToChatByEmail(chatId, userEmail);
+      const updatedChats = await loadChats(currentUser!);
+      setChats(updatedChats);
+    } catch (error) {
+      console.error("Error adding user to chat:", error);
+    }
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    try {
+      await deleteChat(chatId);
+      setChats((prevChats) => prevChats.filter((chat) => chat.id !== chatId));
+    } catch (error) {
+      console.error("Failed to delete chat:", error);
     }
   };
 
@@ -109,8 +118,10 @@ export const ChatPage: React.FC = () => {
       <ChatList
         chats={chats}
         onSelectChat={handleSelectChat}
-        onCreateChat={handleCreateChat} // Використовуємо handleCreateChat
-        onUpdateChat={handleUpdateChat} // Передаємо handleUpdateChat
+        onCreateChat={handleCreateChat}
+        onUpdateChat={handleUpdateChat}
+        onAddUserToChat={handleAddUserToChat}
+        onDeleteChat={handleDeleteChat}
       />
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
         {currentChat ? (
