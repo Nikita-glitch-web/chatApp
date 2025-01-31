@@ -15,7 +15,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { ReactNode } from "react";
 
-// Типи для чату та повідомлення
+// Типы для чата и сообщения
 export type Chat = {
   unreadCount: ReactNode;
   id: string;
@@ -33,7 +33,7 @@ export type Message = {
   timestamp: string;
 };
 
-// Завантаження списку чатів для користувача з Firestore
+// Загрузка списка чатов для пользователя из Firestore
 export const loadChats = async (userId: string): Promise<Chat[]> => {
   const chatsRef = collection(db, "chats");
   const q = query(chatsRef, where("members", "array-contains", userId));
@@ -48,7 +48,7 @@ export const loadChats = async (userId: string): Promise<Chat[]> => {
   );
 };
 
-// Функція для прослуховування змін у чатах користувача
+// Функция для прослушивания изменений в чатах пользователя
 export const listenForUserChats = (
   userId: string,
   callback: (chats: Chat[]) => void
@@ -70,17 +70,39 @@ export const listenForUserChats = (
   });
 };
 
-// Додавання нового користувача в чат
+// Добавление нового пользователя в чат
 export const addUserToChat = async (chatId: string, userId: string) => {
   const chatRef = doc(db, "chats", chatId);
   await updateDoc(chatRef, {
-    members: arrayUnion(userId), // Додає користувача до members
+    members: arrayUnion(userId), // Добавляет пользователя в members
   });
 };
-/**
- * Видаляє чат за його ID
- * @param chatId - ID чату, який потрібно видалити
- */
+
+// Функция для добавления пользователя в чат по email
+export const addUserToChatByEmail = async (
+  chatId: string,
+  email: string
+): Promise<void> => {
+  try {
+    const userSnapshot = await getDocs(
+      query(collection(db, "users"), where("email", "==", email))
+    );
+
+    if (userSnapshot.empty) {
+      throw new Error("User not found");
+    }
+
+    const userDoc = userSnapshot.docs[0];
+    const userId = userDoc.id;
+
+    await addUserToChat(chatId, userId);
+  } catch (error) {
+    console.error("Error adding user to chat:", error);
+    throw error;
+  }
+};
+
+// Удаление чата по его ID
 export const deleteChat = async (chatId: string): Promise<void> => {
   try {
     await deleteDoc(doc(db, "chats", chatId));
@@ -91,14 +113,14 @@ export const deleteChat = async (chatId: string): Promise<void> => {
   }
 };
 
-// Створення нового чату
+// Создание нового чата
 export const createChat = async (
   name: string,
   members: string[]
 ): Promise<Chat> => {
   const newChatData = {
     name,
-    avatar: "", // Опціонально: URL до аватару
+    avatar: "",
     lastMessage: "",
     time: "",
     members,
@@ -113,32 +135,7 @@ export const createChat = async (
   };
 };
 
-// Додавання користувача в чат через email
-export const addUserToChatByEmail = async (
-  chatId: string,
-  email: string
-): Promise<void> => {
-  const userUID = await getUIDByEmail(email);
-  if (userUID) {
-    await addUserToChat(chatId, userUID);
-  } else {
-    console.error(`User with email ${email} not found.`);
-  }
-};
-
-// Пошук UID за email
-export const getUIDByEmail = async (email: string): Promise<string | null> => {
-  const usersRef = collection(db, "users");
-  const q = query(usersRef, where("email", "==", email));
-  const snapshot = await getDocs(q);
-
-  if (!snapshot.empty) {
-    return snapshot.docs[0].id;
-  }
-  return null;
-};
-
-// Оновлення останнього повідомлення в чаті
+// Обновление последнего сообщения в чате
 const updateLastMessage = async (chatId: string, message: string) => {
   const chatRef = doc(db, "chats", chatId);
   await updateDoc(chatRef, {
@@ -147,7 +144,7 @@ const updateLastMessage = async (chatId: string, message: string) => {
   });
 };
 
-// Завантаження повідомлень для чату
+// Подписка на сообщения в чате
 export const subscribeToMessages = (
   chatId: string,
   callback: (messages: Message[]) => void
@@ -173,7 +170,7 @@ export const subscribeToMessages = (
   });
 };
 
-// Відправлення текстового повідомлення
+// Отправка текстового сообщения
 export const sendMessage = async (
   chatId: string,
   userId: string,
@@ -189,7 +186,7 @@ export const sendMessage = async (
   await updateLastMessage(chatId, text);
 };
 
-// Відправлення зображення
+// Отправка изображения
 export const sendImage = async (
   chatId: string,
   userId: string,
@@ -210,11 +207,9 @@ export const sendImage = async (
   await updateLastMessage(chatId, "Image sent");
 };
 
-// Оновлення загальних даних чату (наприклад, назви, аватара, членів)
+// Обновление данных чата
 export const updateChat = async (
   chatId: string,
-  p0: string,
-  p1: never[],
   updatedData: Partial<Chat>
 ) => {
   const chatRef = doc(db, "chats", chatId);

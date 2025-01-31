@@ -3,7 +3,7 @@ import { Box } from "@mui/material";
 import { ChatList } from "../ChatList/ChatList";
 import { MessageWindow } from "../MessageWindow/MessageWindow";
 import { MessageInput } from "../MessageInput/MessageInput";
-import { getAuth } from "firebase/auth";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import {
   loadChats,
   subscribeToMessages,
@@ -24,24 +24,32 @@ export const ChatPage: React.FC = () => {
 
   const auth = getAuth();
 
+  // Подписка на аутентификацию
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUser(user.uid);
-        loadChats(user.uid).then(setChats);
+        try {
+          const loadedChats = await loadChats(user.uid);
+          setChats(loadedChats);
+        } catch (error) {
+          console.error("Error loading chats:", error);
+        }
       } else {
         setCurrentUser(null);
         setChats([]);
       }
     });
-    return () => unsubscribe();
-  }, [auth]);
 
+    return () => unsubscribe();
+  }, []);
+
+  // Подписка на сообщения текущего чата
   useEffect(() => {
-    if (currentChat) {
-      const unsubscribe = subscribeToMessages(currentChat, setMessages);
-      return () => unsubscribe();
-    }
+    if (!currentChat) return;
+
+    const unsubscribe = subscribeToMessages(currentChat, setMessages);
+    return () => unsubscribe();
   }, [currentChat]);
 
   const handleSendMessage = (text: string) => {
@@ -77,16 +85,9 @@ export const ChatPage: React.FC = () => {
     users: string[]
   ) => {
     try {
-      const updatedChat = {
-        id,
-        name,
-        avatar: "",
-        members: users,
-      };
-
       setChats((prevChats) =>
         prevChats.map((chat) =>
-          chat.id === id ? { ...chat, ...updatedChat } : chat
+          chat.id === id ? { ...chat, name, members: users } : chat
         )
       );
     } catch (error) {
@@ -95,10 +96,20 @@ export const ChatPage: React.FC = () => {
   };
 
   const handleAddUserToChat = async (chatId: string, userEmail: string) => {
+    if (!currentUser) return;
+
     try {
       await addUserToChatByEmail(chatId, userEmail);
-      const updatedChats = await loadChats(currentUser!);
-      setChats(updatedChats);
+      const updatedChat = chats.find((chat) => chat.id === chatId);
+      if (updatedChat) {
+        setChats((prevChats) =>
+          prevChats.map((chat) =>
+            chat.id === chatId
+              ? { ...chat, members: [...chat.members, userEmail] }
+              : chat
+          )
+        );
+      }
     } catch (error) {
       console.error("Error adding user to chat:", error);
     }
@@ -108,6 +119,7 @@ export const ChatPage: React.FC = () => {
     try {
       await deleteChat(chatId);
       setChats((prevChats) => prevChats.filter((chat) => chat.id !== chatId));
+      if (currentChat === chatId) setCurrentChat(null);
     } catch (error) {
       console.error("Failed to delete chat:", error);
     }
