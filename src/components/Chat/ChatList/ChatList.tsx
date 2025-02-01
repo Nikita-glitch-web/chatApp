@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   List,
   ListItem,
@@ -19,17 +19,14 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { Chat } from "../../../services/chatServices";
-import { listenForUserChats } from "../../../services/chatServices";
-import { auth } from "../../../store/firebase.config";
 
-// Оновлені типи для пропсів
 type ChatListProps = {
-  chats: Chat[]; // Список чатів
-  onSelectChat: (id: string) => void; // Функція для вибору чату
-  onCreateChat: (name: string, users: string[]) => Promise<void>; // Функція для створення чату
-  onUpdateChat: (id: string, name: string, users: string[]) => Promise<void>; // Функція для оновлення чату
-  onAddUserToChat: (chatId: string, userEmail: string) => Promise<void>; // Функція для додавання користувача
-  onDeleteChat: (id: string) => void; // Функція для видалення чату
+  chats: Chat[];
+  onSelectChat: (id: string) => void;
+  onCreateChat: (name: string, users: string[]) => Promise<void>;
+  onUpdateChat: (id: string, name: string, users: string[]) => Promise<void>;
+  onAddUserToChat: (chatId: string, userEmail: string) => Promise<void>;
+  onDeleteChat: (id: string) => void;
 };
 
 export const ChatList: React.FC<ChatListProps> = ({
@@ -52,19 +49,6 @@ export const ChatList: React.FC<ChatListProps> = ({
     severity: "success" as "success" | "error",
   });
 
-  useEffect(() => {
-    const userId = auth.currentUser?.uid;
-    console.log(">>>>>>>>>>", userId);
-    if (!userId) return;
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const unsubscribe = listenForUserChats(userId, (chatsData) => {
-      // Тут обробка вже з переданим списком chats
-    });
-
-    return () => unsubscribe();
-  }, []);
-
   const showError = (message: string) =>
     setSnackbar({ open: true, message, severity: "error" });
 
@@ -72,7 +56,6 @@ export const ChatList: React.FC<ChatListProps> = ({
     if (!newChatName || !newChatUsers)
       return showError("Please fill in all fields!");
     const usersArray = newChatUsers.split(",").map((user) => user.trim());
-    console.log(usersArray);
     await onCreateChat(newChatName, usersArray);
     setSnackbar({
       open: true,

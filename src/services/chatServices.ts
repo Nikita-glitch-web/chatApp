@@ -33,11 +33,31 @@ export type Message = {
   timestamp: string;
 };
 
-// Створення нового чату
 export const createChat = async (
   name: string,
-  members: string[]
+  memberEmails: string[]
 ): Promise<Chat> => {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    throw new Error("User is not authenticated");
+  }
+
+  const members: string[] = [currentUser.uid];
+
+  for (const email of memberEmails) {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("email", "==", email));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const userId = querySnapshot.docs[0].id;
+      if (!members.includes(userId)) {
+        members.push(userId);
+      }
+    }
+  }
+  console.log(members);
+
   const newChatData = {
     name,
     avatar: "",
@@ -200,7 +220,9 @@ export const listenForUserChats = (
 ) => {
   console.log(userId);
   const chatsRef = collection(db, "chats");
-  const q = query(chatsRef, where("members", "array-contains", userId)); // PROBLEMA TUTA!!!!!!!!!!
+  const t = where("members", "array-contains", userId);
+  console.log("x", t);
+  const q = query(chatsRef, t); // PROBLEMA TUTA!!!!!!!!!!
 
   return onSnapshot(q, (snapshot) => {
     const chats: Chat[] = snapshot.docs.map(

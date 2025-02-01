@@ -11,10 +11,10 @@ import {
   sendImage,
   createChat,
   addUserToChatByEmail,
+  deleteChat,
   Chat,
   Message,
 } from "../../../services/chatServices";
-import { deleteChat } from "../../../services/chatServices";
 
 export const ChatPage: React.FC = () => {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -68,11 +68,11 @@ export const ChatPage: React.FC = () => {
     setCurrentChat(chatId);
   };
 
-  const handleCreateChat = async (name: string, users: string[]) => {
+  const handleCreateChat = async (name: string, members: string[]) => {
     if (!currentUser) return;
 
     try {
-      const newChat = await createChat(name, [...users, currentUser]);
+      const newChat = await createChat(name, members);
       setChats((prevChats) => [...prevChats, newChat]);
     } catch (error) {
       console.error("Error creating chat:", error);
