@@ -4,8 +4,28 @@ import {
   signOut,
   onAuthStateChanged,
   User,
+  GoogleAuthProvider,
+  signInWithCredential,
 } from "firebase/auth";
 import { auth } from "../store/firebase.config";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
+
+const db = getFirestore();
+
+const addUserToFirestore = async (user: User, additionalData = {}) => {
+  try {
+    console.log(user);
+    await setDoc(doc(db, "users", user.uid), {
+      email: user.email,
+      createdAt: new Date(),
+      ...additionalData, // додаткові дані користувача
+    });
+    console.log("User added to Firestore");
+  } catch (error) {
+    console.error("Error adding user to Firestore: ", error);
+    throw error;
+  }
+};
 
 export const registerUser = async (email: string, password: string) => {
   try {
@@ -14,7 +34,9 @@ export const registerUser = async (email: string, password: string) => {
       email,
       password
     );
-    return userCredential.user;
+    const user = userCredential.user;
+    await addUserToFirestore(user); // Додаємо користувача в Firestore
+    return user;
   } catch (error) {
     console.error("Error registering user: ", error);
     throw error;
@@ -28,7 +50,9 @@ export const loginUser = async (email: string, password: string) => {
       email,
       password
     );
-    return userCredential.user;
+    const user = userCredential.user;
+    await addUserToFirestore(user);
+    return user;
   } catch (error) {
     console.error("Error logging in user: ", error);
     throw error;
@@ -59,4 +83,28 @@ export const getCurrentUser = (): Promise<User | null> => {
       }
     );
   });
+};
+
+export const loginWithGoogle = async (token: string) => {
+  try {
+    const credential = GoogleAuthProvider.credential(token);
+    const { user } = await signInWithCredential(auth, credential);
+    await addUserToFirestore(user); // Додаємо користувача в Firestore
+    return user;
+  } catch (error) {
+    console.error("Google login failed:", error);
+    throw error;
+  }
+};
+
+export const signUpWithGoogle = async (token: string) => {
+  try {
+    const credential = GoogleAuthProvider.credential(token);
+    const { user } = await signInWithCredential(auth, credential);
+    await addUserToFirestore(user); // Додаємо користувача в Firestore
+    return user;
+  } catch (error) {
+    console.error("Google sign-up failed:", error);
+    throw error;
+  }
 };

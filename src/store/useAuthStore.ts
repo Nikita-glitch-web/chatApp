@@ -1,13 +1,13 @@
 import { create } from "zustand";
+import { User } from "firebase/auth";
 import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  User,
-} from "firebase/auth";
-import { auth } from "./firebase.config";
-import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+  loginUser,
+  registerUser,
+  logoutUser,
+  getCurrentUser,
+  loginWithGoogle,
+  signUpWithGoogle,
+} from "../services/authServices";
 
 interface IAuthCredentials {
   email: string;
@@ -33,7 +33,7 @@ export const useAuthStore = create<IAuthStore>((set) => ({
 
   login: async ({ email, password }: IAuthCredentials) => {
     try {
-      const { user } = await signInWithEmailAndPassword(auth, email, password);
+      const user = await loginUser(email, password);
       set({ user });
     } catch (error) {
       console.error("Login failed:", error);
@@ -43,11 +43,7 @@ export const useAuthStore = create<IAuthStore>((set) => ({
 
   signUp: async ({ email, password }: IAuthCredentials) => {
     try {
-      const { user } = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      const user = await registerUser(email, password);
       set({ user });
     } catch (error) {
       console.error("Sign up failed:", error);
@@ -57,7 +53,7 @@ export const useAuthStore = create<IAuthStore>((set) => ({
 
   logout: async () => {
     try {
-      await signOut(auth);
+      await logoutUser();
       set({ user: null });
     } catch (error) {
       console.error("Logout failed:", error);
@@ -66,16 +62,18 @@ export const useAuthStore = create<IAuthStore>((set) => ({
   },
 
   fetchCurrentUser: () => {
-    onAuthStateChanged(auth, (currentUser) => {
-      console.log(">>>>>>>>", currentUser);
-      set({ user: currentUser });
-    });
+    getCurrentUser()
+      .then((user) => {
+        set({ user });
+      })
+      .catch((error) => {
+        console.error("Failed to fetch current user:", error);
+      });
   },
 
   loginWithGoogle: async ({ token }: GoogleAuthCredentials) => {
     try {
-      const credential = GoogleAuthProvider.credential(token);
-      const { user } = await signInWithCredential(auth, credential);
+      const user = await loginWithGoogle(token);
       set({ user });
       console.log("Google login successful");
     } catch (error) {
@@ -86,8 +84,7 @@ export const useAuthStore = create<IAuthStore>((set) => ({
 
   signUpWithGoogle: async ({ token }: GoogleAuthCredentials) => {
     try {
-      const credential = GoogleAuthProvider.credential(token);
-      const { user } = await signInWithCredential(auth, credential);
+      const user = await signUpWithGoogle(token);
       set({ user });
       console.log("Google sign-up successful");
     } catch (error) {

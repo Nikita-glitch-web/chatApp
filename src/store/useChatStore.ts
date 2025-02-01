@@ -1,208 +1,109 @@
-import { db, storage } from "../store/firebase.config";
+import { create } from "zustand";
+import { Chat } from "../services/chatServices"; // Імпортуємо типи з сервісу
 import {
-  collection,
-  addDoc,
-  query,
-  orderBy,
-  onSnapshot,
-  doc,
-  getDocs,
-  where,
-  updateDoc,
-  arrayUnion,
-} from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { ReactNode } from "react";
+  loadChats,
+  createChat,
+  sendMessage,
+  sendImage,
+  updateChat,
+  deleteChat,
+} from "../services/chatServices"; // Імпортуємо сервіси
 
-// Типи для чату та повідомлення
-export type Chat = {
-  unreadCount: ReactNode;
-  id: string;
-  name: string;
-  avatar: string;
-  lastMessage: string;
-  time: string;
-  members: string[];
-};
+interface IChatStore {
+  chats: Chat[];
+  selectedChat: Chat | null;
+  loadChats: () => Promise<void>;
+  createChat: (name: string, members: string[]) => Promise<void>;
+  selectChat: (chatId: string) => void;
+  sendMessage: (chatId: string, userId: string, text: string) => Promise<void>;
+  sendImage: (chatId: string, userId: string, imageFile: File) => Promise<void>;
+  updateChat: (chatId: string, updatedData: Partial<Chat>) => Promise<void>;
+  deleteChat: (chatId: string) => Promise<void>;
+}
 
-export type Message = {
-  text?: string;
-  imageUrl?: string;
-  senderId: string;
-  timestamp: string;
-};
+export const useChatStore = create<IChatStore>((set, get) => ({
+  chats: [],
+  selectedChat: null,
 
-// Завантаження списку чатів для користувача з Firestore
-export const loadChats = async (userId: string): Promise<Chat[]> => {
-  const chatsRef = collection(db, "chats");
-  const q = query(chatsRef, where("members", "array-contains", userId));
-  const querySnapshot = await getDocs(q);
+  loadChats: async () => {
+    try {
+      const chats = await loadChats(); // Потрібно замінити на фактичний userId
+      set({ chats });
+    } catch (error) {
+      console.error("Failed to load chats", error);
+    }
+  },
 
-  return querySnapshot.docs.map(
-    (doc) =>
-      ({
-        id: doc.id,
-        ...doc.data(),
-      } as Chat)
-  );
-};
+  createChat: async (name: string, members: string[]) => {
+    try {
+      const chat = await createChat(name, members);
+      set((state) => ({ chats: [...state.chats, chat] }));
+    } catch (error) {
+      console.error("Failed to create chat", error);
+    }
+  },
 
-// Функція для прослуховування змін у чатах користувача
-export const listenForUserChats = (
-  userId: string,
-  callback: (chats: Chat[]) => void
-) => {
-  const chatsQuery = query(
-    collection(db, "chats"),
-    where("members", "array-contains", userId)
-  );
+  selectChat: (chatId: string) => {
+    const chat =
+      get().chats.find((chat: { id: string }) => chat.id === chatId) || null;
+    set({ selectedChat: chat });
+  },
 
-  return onSnapshot(chatsQuery, (querySnapshot) => {
-    const chats = querySnapshot.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        } as Chat)
-    );
-    callback(chats);
-  });
-};
+  sendMessage: async (chatId: string, userId: string, text: string) => {
+    try {
+      await sendMessage(chatId, userId, text);
+      set((state) => ({
+        chats: state.chats.map((chat) =>
+          chat.id === chatId
+            ? { ...chat, lastMessage: text, time: new Date().toISOString() }
+            : chat
+        ),
+      }));
+    } catch (error) {
+      console.error("Failed to send message", error);
+    }
+  },
 
-// Додавання нового користувача в чат
-export const addUserToChat = async (chatId: string, userId: string) => {
-  const chatRef = doc(db, "chats", chatId);
-  await updateDoc(chatRef, {
-    members: arrayUnion(userId), // Додає користувача до members
-  });
-};
+  sendImage: async (chatId: string, userId: string, imageFile: File) => {
+    try {
+      await sendImage(chatId, userId, imageFile);
+      set((state) => ({
+        chats: state.chats.map((chat) =>
+          chat.id === chatId
+            ? {
+                ...chat,
+                lastMessage: "Image sent",
+                time: new Date().toISOString(),
+              }
+            : chat
+        ),
+      }));
+    } catch (error) {
+      console.error("Failed to send image", error);
+    }
+  },
 
-// Створення нового чату
-export const createChat = async (
-  name: string,
-  members: string[]
-): Promise<Chat> => {
-  const newChatData = {
-    name,
-    avatar: "", // Опціонально: URL до аватару
-    lastMessage: "",
-    time: "",
-    members,
-  };
+  updateChat: async (chatId: string, updatedData: Partial<Chat>) => {
+    try {
+      await updateChat(chatId, updatedData);
+      set((state) => ({
+        chats: state.chats.map((chat) =>
+          chat.id === chatId ? { ...chat, ...updatedData } : chat
+        ),
+      }));
+    } catch (error) {
+      console.error("Failed to update chat", error);
+    }
+  },
 
-  const newChatRef = await addDoc(collection(db, "chats"), newChatData);
-
-  return {
-    id: newChatRef.id,
-    ...newChatData,
-    unreadCount: 0,
-  };
-};
-
-// Додавання користувача в чат через email
-export const addUserToChatByEmail = async (
-  chatId: string,
-  email: string
-): Promise<void> => {
-  const userUID = await getUIDByEmail(email);
-  if (userUID) {
-    await addUserToChat(chatId, userUID);
-  } else {
-    console.error(`User with email ${email} not found.`);
-  }
-};
-
-// Пошук UID за email
-export const getUIDByEmail = async (email: string): Promise<string | null> => {
-  const usersRef = collection(db, "users");
-  const q = query(usersRef, where("email", "==", email));
-  const snapshot = await getDocs(q);
-
-  if (!snapshot.empty) {
-    return snapshot.docs[0].id;
-  }
-  return null;
-};
-
-// Оновлення останнього повідомлення в чаті
-const updateLastMessage = async (chatId: string, message: string) => {
-  const chatRef = doc(db, "chats", chatId);
-  await updateDoc(chatRef, {
-    lastMessage: message,
-    time: new Date().toISOString(),
-  });
-};
-
-// Завантаження повідомлень для чату
-export const subscribeToMessages = (
-  chatId: string,
-  callback: (messages: Message[]) => void
-) => {
-  const messagesRef = collection(db, "chats", chatId, "messages");
-  const q = query(messagesRef, orderBy("timestamp", "asc"));
-
-  return onSnapshot(q, (snapshot) => {
-    const messages: Message[] = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        text: data.text || "",
-        imageUrl: data.imageUrl || "",
-        senderId: data.senderId || "unknown",
-        timestamp:
-          typeof data.timestamp?.toDate === "function"
-            ? data.timestamp.toDate().toISOString()
-            : data.timestamp || new Date().toISOString(),
-      };
-    });
-
-    callback(messages);
-  });
-};
-
-// Відправлення текстового повідомлення
-export const sendMessage = async (
-  chatId: string,
-  userId: string,
-  text: string
-) => {
-  const newMessage: Message = {
-    text,
-    senderId: userId,
-    timestamp: new Date().toISOString(),
-  };
-
-  await addDoc(collection(db, "chats", chatId, "messages"), newMessage);
-  await updateLastMessage(chatId, text);
-};
-
-// Відправлення зображення
-export const sendImage = async (
-  chatId: string,
-  userId: string,
-  imageFile: File
-) => {
-  const imageRef = ref(storage, `chats/${chatId}/${imageFile.name}`);
-  await uploadBytes(imageRef, imageFile);
-
-  const imageUrl = await getDownloadURL(imageRef);
-
-  const newMessage: Message = {
-    imageUrl,
-    senderId: userId,
-    timestamp: new Date().toISOString(),
-  };
-
-  await addDoc(collection(db, "chats", chatId, "messages"), newMessage);
-  await updateLastMessage(chatId, "Image sent");
-};
-
-// Оновлення інформації про чат (наприклад, назви чату або членів)
-export const updateChat = async (
-  chatId: string,
-  newChatNameToSave: string,
-  p0: never[],
-  updatedData: Partial<Chat>
-) => {
-  const chatRef = doc(db, "chats", chatId);
-  await updateDoc(chatRef, updatedData);
-};
+  deleteChat: async (chatId: string) => {
+    try {
+      await deleteChat(chatId);
+      set((state) => ({
+        chats: state.chats.filter((chat) => chat.id !== chatId),
+      }));
+    } catch (error) {
+      console.error("Failed to delete chat", error);
+    }
+  },
+}));

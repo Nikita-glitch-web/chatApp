@@ -13,7 +13,7 @@ import {
   addUserToChatByEmail,
   Chat,
   Message,
-} from "../../../store/useChatStore";
+} from "../../../services/chatServices";
 import { deleteChat } from "../../../services/chatServices";
 
 export const ChatPage: React.FC = () => {

@@ -18,7 +18,7 @@ import {
   IconButton,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { Chat } from "../../../store/useChatStore";
+import { Chat } from "../../../services/chatServices";
 import { listenForUserChats } from "../../../services/chatServices";
 import { auth } from "../../../store/firebase.config";
 
@@ -54,6 +54,7 @@ export const ChatList: React.FC<ChatListProps> = ({
 
   useEffect(() => {
     const userId = auth.currentUser?.uid;
+    console.log(">>>>>>>>>>", userId);
     if (!userId) return;
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -71,6 +72,7 @@ export const ChatList: React.FC<ChatListProps> = ({
     if (!newChatName || !newChatUsers)
       return showError("Please fill in all fields!");
     const usersArray = newChatUsers.split(",").map((user) => user.trim());
+    console.log(usersArray);
     await onCreateChat(newChatName, usersArray);
     setSnackbar({
       open: true,
