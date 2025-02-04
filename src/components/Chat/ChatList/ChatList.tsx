@@ -86,7 +86,6 @@ export const ChatList: React.FC<ChatListProps> = ({
   return (
     <Box
       sx={{
-        width: "300px",
         borderRight: "1px solid #ccc",
         overflowY: "auto",
         height: "100vh",

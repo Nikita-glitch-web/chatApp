@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { db, storage } from "../store/firebase.config"; // Налаштування Firebase
+import { db, storage } from "./firebase.config"; // Налаштування Firebase
 import {
   collection,
   addDoc,
@@ -76,7 +76,8 @@ export const createChat = async (
 };
 
 // Завантаження списку чатів для користувача
-export const loadChats = async (): Promise<Chat[]> => {
+export const loadChats = async (uid?: string): Promise<Chat[]> => {
+  console.log(uid);
   const currentUser = await getCurrentUser();
   console.log(currentUser);
   const userId = currentUser?.uid;
@@ -194,7 +195,7 @@ export const addUserToChatByEmail = async (chatId: string, email: string) => {
     const querySnapshot = await getDocs(q);
 
     if (!querySnapshot.empty) {
-      const user = querySnapshot.docs[0].data(); // Отримуємо користувача
+      //const user = querySnapshot.docs[0].data(); // Отримуємо користувача
       const userId = querySnapshot.docs[0].id; // Отримуємо userId
 
       // Оновлюємо чат, додаючи нового учасника

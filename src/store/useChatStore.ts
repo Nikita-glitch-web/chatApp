@@ -1,13 +1,14 @@
 import { create } from "zustand";
 import { Chat } from "../services/chatServices"; // Імпортуємо типи з сервісу
 import {
-  loadChats,
+  loadChats as fetchChats, // Перейменування, щоб виділити від методів стейту
   createChat,
   sendMessage,
   sendImage,
   updateChat,
   deleteChat,
-} from "../services/chatServices"; // Імпортуємо сервіси
+} from "../services/chatServices";
+import { getAuth } from "firebase/auth"; // Додаємо Firebase Auth для отримання userId
 
 interface IChatStore {
   chats: Chat[];
@@ -27,8 +28,15 @@ export const useChatStore = create<IChatStore>((set, get) => ({
 
   loadChats: async () => {
     try {
-      const chats = await loadChats(); // Потрібно замінити на фактичний userId
-      set({ chats });
+      const auth = getAuth();
+      const user = auth.currentUser;
+
+      if (user) {
+        const chats = await fetchChats(user.uid); // Передаємо uid користувача
+        set({ chats });
+      } else {
+        console.warn("User is not authenticated");
+      }
     } catch (error) {
       console.error("Failed to load chats", error);
     }

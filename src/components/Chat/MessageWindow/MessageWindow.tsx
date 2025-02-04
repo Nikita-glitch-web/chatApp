@@ -23,7 +23,7 @@ export const MessageWindow: React.FC<MessageWindowProps> = ({
         flex: 1,
         overflowY: "auto",
         marginBottom: 2,
-        padding: 2,
+        padding: "40px",
         backgroundColor: "#f9f9f9",
       }}
     >

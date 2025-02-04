@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Box } from "@mui/material";
+import { Box, IconButton } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { ChatList } from "../ChatList/ChatList";
 import { MessageWindow } from "../MessageWindow/MessageWindow";
 import { MessageInput } from "../MessageInput/MessageInput";
@@ -11,9 +13,9 @@ import {
   sendImage,
   createChat,
   addUserToChatByEmail,
-  deleteChat,
   Chat,
   Message,
+  deleteChat,
 } from "../../../services/chatServices";
 
 export const ChatPage: React.FC = () => {
@@ -21,10 +23,10 @@ export const ChatPage: React.FC = () => {
   const [currentChat, setCurrentChat] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [isChatListOpen, setIsChatListOpen] = useState(false);
 
   const auth = getAuth();
 
-  // Подписка на аутентификацию
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -44,7 +46,6 @@ export const ChatPage: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // Подписка на сообщения текущего чата
   useEffect(() => {
     if (!currentChat) return;
 
@@ -66,6 +67,7 @@ export const ChatPage: React.FC = () => {
 
   const handleSelectChat = (chatId: string) => {
     setCurrentChat(chatId);
+    setIsChatListOpen(false); // Закриваємо список чатів після вибору на мобільному
   };
 
   const handleCreateChat = async (name: string, members: string[]) => {
@@ -76,22 +78,6 @@ export const ChatPage: React.FC = () => {
       setChats((prevChats) => [...prevChats, newChat]);
     } catch (error) {
       console.error("Error creating chat:", error);
-    }
-  };
-
-  const handleUpdateChat = async (
-    id: string,
-    name: string,
-    users: string[]
-  ) => {
-    try {
-      setChats((prevChats) =>
-        prevChats.map((chat) =>
-          chat.id === id ? { ...chat, name, members: users } : chat
-        )
-      );
-    } catch (error) {
-      console.error("Error updating chat:", error);
     }
   };
 
@@ -125,17 +111,88 @@ export const ChatPage: React.FC = () => {
     }
   };
 
+  const handleUpdateChat = async (
+    id: string,
+    name: string,
+    users: string[]
+  ) => {
+    try {
+      setChats((prevChats) =>
+        prevChats.map((chat) =>
+          chat.id === id ? { ...chat, name, members: users } : chat
+        )
+      );
+    } catch (error) {
+      console.error("Error updating chat:", error);
+    }
+  };
+
   return (
-    <Box sx={{ display: "flex", height: "100vh", width: "100vw" }}>
-      <ChatList
-        chats={chats}
-        onSelectChat={handleSelectChat}
-        onCreateChat={handleCreateChat}
-        onUpdateChat={handleUpdateChat}
-        onAddUserToChat={handleAddUserToChat}
-        onDeleteChat={handleDeleteChat}
-      />
-      <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
+    <Box
+      sx={{
+        display: "flex",
+        height: "100vh",
+        width: "100vw",
+        position: "relative",
+      }}
+    >
+      {/* Кнопка для відкриття списку чатів на мобільних пристроях */}
+      <IconButton
+        onClick={() => setIsChatListOpen(true)}
+        sx={{
+          display: { xs: isChatListOpen ? "none" : "block", md: "none" },
+          position: "absolute",
+          top: 8,
+          left: 8,
+          zIndex: 10,
+        }}
+      >
+        <MenuIcon />
+      </IconButton>
+
+      {/* Список чатів */}
+      <Box
+        sx={{
+          width: { xs: "100%", md: "300px" },
+          display: { xs: isChatListOpen ? "block" : "none", md: "block" },
+          position: { xs: "absolute", md: "relative" },
+          height: "100%",
+          zIndex: 20,
+          backgroundColor: "background.paper",
+        }}
+      >
+        <IconButton
+          onClick={() => setIsChatListOpen(false)}
+          sx={{
+            display: { xs: "block", md: "none" },
+            position: "absolute",
+            top: 8,
+            left: 8,
+            zIndex: 21,
+            padding: "20px",
+          }}
+        >
+          <ArrowBackIcon />
+        </IconButton>
+
+        <ChatList
+          chats={chats}
+          onSelectChat={handleSelectChat}
+          onCreateChat={handleCreateChat}
+          onUpdateChat={handleUpdateChat}
+          onAddUserToChat={handleAddUserToChat}
+          onDeleteChat={handleDeleteChat}
+        />
+      </Box>
+
+      {/* Вікно повідомлень */}
+      <Box
+        sx={{
+          flexGrow: 1,
+          display: { xs: isChatListOpen ? "none" : "flex", md: "flex" },
+          flexDirection: "column",
+        }}
+      >
         {currentChat ? (
           <>
             <MessageWindow messages={messages} currentUser={currentUser} />

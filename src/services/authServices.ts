@@ -7,7 +7,7 @@ import {
   GoogleAuthProvider,
   signInWithCredential,
 } from "firebase/auth";
-import { auth } from "../store/firebase.config";
+import { auth } from "./firebase.config";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 
 const db = getFirestore();
