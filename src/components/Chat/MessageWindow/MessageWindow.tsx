@@ -1,11 +1,14 @@
 import React from "react";
 import { Box, Typography, List, ListItem, Avatar } from "@mui/material";
-import { Timestamp } from "firebase/firestore";
+import { Link } from "react-router-dom";
+import UserStore from "../../../store/useProfileStore"; // Імпортуємо UserStore
+
 type Message = {
   text?: string;
   imageUrl?: string;
   senderId: string;
-  timestamp: string | Timestamp; // Дозволяємо як рядок, так і Firebase Timestamp
+  timestamp: string;
+  senderAvatar?: string;
 };
 
 type MessageWindowProps = {
@@ -17,6 +20,8 @@ export const MessageWindow: React.FC<MessageWindowProps> = ({
   messages,
   currentUser,
 }) => {
+  const userStore = UserStore; // Отримуємо доступ до UserStore
+
   return (
     <Box
       sx={{
@@ -38,7 +43,26 @@ export const MessageWindow: React.FC<MessageWindowProps> = ({
               marginBottom: 1,
             }}
           >
-            <Avatar>{message.senderId === currentUser ? "You" : "A"}</Avatar>
+            {/* Перевірка доступу до профілю */}
+            {userStore.hasAccessToProfile(message.senderId) ? (
+              <Link
+                to={`/profile/${message.senderId}`}
+                style={{ textDecoration: "none" }}
+              >
+                <Avatar
+                  src={message.senderAvatar} // Використовуємо URL аватара
+                  sx={{ cursor: "pointer" }}
+                >
+                  {!message.senderAvatar ? "A" : ""}
+                </Avatar>
+              </Link>
+            ) : (
+              <Avatar
+                src={message.senderAvatar}
+                sx={{ cursor: "not-allowed" }}
+              />
+            )}
+
             <Box sx={{ marginLeft: 1, maxWidth: "80%" }}>
               <Typography
                 sx={{

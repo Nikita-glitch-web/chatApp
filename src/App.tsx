@@ -7,6 +7,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { ErrorPage } from "./components/common/ErrorPage/ErrorPage";
 import { CssBaseline } from "@mui/material";
 import { ChatPage } from "./components/Chat/ChatPage/ChatPage";
+import UserProfile from "./components/User/UserProfile/UserProfile";
 
 const App: React.FC = () => {
   return (
@@ -20,6 +21,7 @@ const App: React.FC = () => {
               <Route path="/signup" element={<SignUpForm />} />
               <Route path="*" element={<ErrorPage />} />
               <Route path="/chat" element={<ChatPage />} />
+              <Route path="/profile/:userI" element={<UserProfile />} />
             </Routes>
           </Router>
         </CssBaseline>
