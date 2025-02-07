@@ -12,7 +12,7 @@ const UserProfile: React.FC = () => {
         alignItems: "center",
         justifyContent: "center",
         height: "100vh", // Центрування по вертикалі
-        gap: 3, // Відступ між компонентами
+        gap: 4, // Відступ між компонентами
       }}
     >
       <Paper
@@ -21,7 +21,7 @@ const UserProfile: React.FC = () => {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: 2,
+          gap: 4,
           boxShadow: 3,
           borderRadius: 3,
         }}

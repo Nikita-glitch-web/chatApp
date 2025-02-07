@@ -1,6 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Avatar, IconButton, CircularProgress } from "@mui/material";
-import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import { Avatar, CircularProgress, Box } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import UserStore from "../../../store/useProfileStore";
 
@@ -9,7 +8,7 @@ export const UserAvatar: React.FC = observer(() => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAvatarClick = () => {
-    fileInputRef.current?.click();
+    fileInputRef.current?.click(); // Відкриває вибір файлу при кліці на аватар
   };
 
   const handleFileChange = async (
@@ -17,30 +16,44 @@ export const UserAvatar: React.FC = observer(() => {
   ) => {
     const file = event.target.files?.[0];
     if (file) {
-      setIsUploading(true); // Встановлюємо статус завантаження
+      setIsUploading(true);
       await UserStore.updateAvatar(file);
-      setIsUploading(false); // Скидаємо статус завантаження після завершення
+      setIsUploading(false);
     }
   };
 
   return (
-    <div className="relative w-40 h-40">
+    <Box
+      sx={{
+        position: "relative",
+        display: "inline-block",
+        boxShadow:
+          "0px 2px 4px -1px rgba(0, 0, 0, 0.2), 0px 4px 5px 0px rgba(0, 0, 0, 0.14), 0px 1px 10px 0px rgba(0, 0, 0, 0.12)",
+        borderRadius: "50%",
+      }}
+    >
       <Avatar
         src={UserStore.userProfile.avatar || ""}
         sx={{ width: 160, height: 160, cursor: "pointer" }}
+        onClick={handleAvatarClick}
       />
-      {isUploading ? (
-        <div className="absolute top-0 left-0 right-0 bottom-0 flex justify-center items-center bg-opacity-50 bg-gray-500">
-          <CircularProgress />
-        </div>
-      ) : (
-        <IconButton
-          className="absolute bottom-0 right-0 bg-white"
-          sx={{ borderRadius: "50%", boxShadow: 2 }}
-          onClick={handleAvatarClick}
+      {isUploading && (
+        <Box
+          sx={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            borderRadius: "50%",
+          }}
         >
-          <PhotoCameraIcon />
-        </IconButton>
+          <CircularProgress />
+        </Box>
       )}
       <input
         type="file"
@@ -49,6 +62,6 @@ export const UserAvatar: React.FC = observer(() => {
         style={{ display: "none" }}
         onChange={handleFileChange}
       />
-    </div>
+    </Box>
   );
 });

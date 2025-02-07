@@ -33,50 +33,74 @@ export const MessageWindow: React.FC<MessageWindowProps> = ({
       }}
     >
       <List>
-        {messages.map((message, index) => (
-          <ListItem
-            key={index}
-            sx={{
-              display: "flex",
-              flexDirection:
-                message.senderId === currentUser ? "row-reverse" : "row",
-              marginBottom: 1,
-            }}
-          >
-            {/* Перевірка доступу до профілю */}
-            {userStore.hasAccessToProfile(message.senderId) ? (
-              <Link
-                to={`/profile/${message.senderId}`}
-                style={{ textDecoration: "none" }}
-              >
-                <Avatar
-                  src={message.senderAvatar} // Використовуємо URL аватара
-                  sx={{ cursor: "pointer" }}
+        {messages.map((message, index) => {
+          const isCurrentUser = message.senderId === currentUser;
+          return (
+            <ListItem
+              key={index}
+              sx={{
+                display: "flex",
+                flexDirection: isCurrentUser ? "row-reverse" : "row",
+                alignItems: "center",
+                marginBottom: 1,
+              }}
+            >
+              {/* Перевірка доступу до профілю */}
+              {userStore.hasAccessToProfile(message.senderId) ? (
+                <Link
+                  to={`/profile/${message.senderId}`}
+                  style={{ textDecoration: "none" }}
                 >
-                  {!message.senderAvatar ? "A" : ""}
-                </Avatar>
-              </Link>
-            ) : (
-              <Avatar
-                src={message.senderAvatar}
-                sx={{ cursor: "not-allowed" }}
-              />
-            )}
+                  <Avatar
+                    src={message.senderAvatar} // Використовуємо URL аватара
+                    sx={{ cursor: "pointer" }}
+                  >
+                    {!message.senderAvatar ? "you" : ""}
+                  </Avatar>
+                </Link>
+              ) : (
+                <Avatar
+                  src={message.senderAvatar}
+                  sx={{ cursor: "not-allowed" }}
+                />
+              )}
 
-            <Box sx={{ marginLeft: 1, maxWidth: "80%" }}>
-              <Typography
+              <Box
                 sx={{
-                  backgroundColor:
-                    message.senderId === currentUser ? "#e0f7fa" : "#f1f8e9",
-                  padding: 1,
-                  borderRadius: 2,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: isCurrentUser ? "flex-end" : "flex-start",
+                  maxWidth: "80%",
+                  marginLeft: isCurrentUser ? 0 : 1,
+                  marginRight: isCurrentUser ? 1 : 0,
                 }}
               >
-                {message.text}
-              </Typography>
-            </Box>
-          </ListItem>
-        ))}
+                <Typography
+                  sx={{
+                    backgroundColor: isCurrentUser ? "#e0f7fa" : "#f1f8e9",
+                    padding: 1,
+                    borderRadius: 2,
+                  }}
+                >
+                  {message.text}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "gray",
+                    marginTop: "2px",
+                    alignSelf: isCurrentUser ? "flex-start" : "flex-end",
+                  }}
+                >
+                  {new Date(message.timestamp).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </Typography>
+              </Box>
+            </ListItem>
+          );
+        })}
       </List>
     </Box>
   );

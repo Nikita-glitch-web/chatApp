@@ -8,6 +8,7 @@ import {
   Card,
   CardContent,
   Typography,
+  Box,
 } from "@mui/material";
 
 export const UserBio: React.FC = observer(() => {
@@ -34,19 +35,20 @@ export const UserBio: React.FC = observer(() => {
   };
 
   return (
-    <Card sx={{ maxWidth: 400, padding: 2, boxShadow: 3 }}>
+    <Card sx={{ maxWidth: 500, p: 3, boxShadow: 4, borderRadius: 3 }}>
       <CardContent>
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h5" fontWeight="bold" gutterBottom>
           Інформація про користувача
         </Typography>
         {isEditing ? (
-          <>
+          <Box display="flex" flexDirection="column" gap={2}>
             <TextField
               label="Ім'я"
               value={editedFirstName}
               onChange={(e) => setEditedFirstName(e.target.value)}
               fullWidth
               margin="normal"
+              InputProps={{ sx: { fontSize: "1.1rem" } }}
             />
             <TextField
               label="Прізвище"
@@ -54,6 +56,7 @@ export const UserBio: React.FC = observer(() => {
               onChange={(e) => setEditedLastName(e.target.value)}
               fullWidth
               margin="normal"
+              InputProps={{ sx: { fontSize: "1.1rem" } }}
             />
             <TextField
               label="Опис"
@@ -63,35 +66,50 @@ export const UserBio: React.FC = observer(() => {
               multiline
               rows={3}
               margin="normal"
+              InputProps={{ sx: { fontSize: "1.1rem" } }}
             />
             <Button
               variant="contained"
-              color="primary"
+              color="primary" // Оригінальний колір
               onClick={handleSave}
+              sx={{
+                fontSize: "1rem",
+                fontWeight: "bold",
+                py: 1.5,
+                borderRadius: 2,
+                mt: 2,
+              }}
               fullWidth
             >
               Зберегти
             </Button>
-          </>
+          </Box>
         ) : (
-          <>
-            <Typography variant="body1">
+          <Box display="flex" flexDirection="column" gap={2}>
+            <Typography variant="body1" fontSize="1.2rem">
               <strong>Ім'я:</strong> {firstName || "Не вказано"}
             </Typography>
-            <Typography variant="body1">
+            <Typography variant="body1" fontSize="1.2rem">
               <strong>Прізвище:</strong> {lastName || "Не вказано"}
             </Typography>
-            <Typography variant="body1">
+            <Typography variant="body1" fontSize="1.2rem">
               <strong>Опис:</strong> {bio || "Не вказано"}
             </Typography>
             <Button
-              variant="outlined"
+              variant="outlined" // Оригінальний колір кнопки
               onClick={() => setIsEditing(true)}
+              sx={{
+                fontSize: "1rem",
+                fontWeight: "bold",
+                py: 1.5,
+                borderRadius: 2,
+                mt: 2,
+              }}
               fullWidth
             >
               Редагувати
             </Button>
-          </>
+          </Box>
         )}
       </CardContent>
     </Card>
