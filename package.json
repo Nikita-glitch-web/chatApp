@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -13,21 +13,30 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
-    "@mui/icons-material": "^6.3.1",
+    "@mui/icons-material": "^6.4.2",
     "@mui/material": "^6.3.1",
     "@react-oauth/google": "^0.12.1",
+    "aws-sdk": "^2.1692.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
     "firebase": "^11.1.0",
+    "firebase-admin": "^13.0.2",
+    "firebase-functions": "^6.3.1",
     "gapi-script": "^1.2.0",
+    "mobx": "^6.13.6",
+    "mobx-react-lite": "^4.1.0",
     "mui": "^0.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router": "^7.1.1",
     "sass": "^1.83.1",
     "scss": "^0.2.4",
+    "socket.io": "^4.8.1",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@types/express": "^5.0.0",
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
@@ -39,5 +48,10 @@
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.18.2",
     "vite": "^6.0.5"
-  }
+  },
+  "description": "1.ChatPage: це головна сторінка чату, де користувач може бачити всі чати, взаємодіяти з ними та надсилати повідомлення. 2.ChatList: список доступних чатів або контактів. Це дозволяє користувачеві вибирати, з ким вести розмову. 3.Chat header: верхня панель чату, яка зазвичай містить інформацію про поточний чат (наприклад, ім'я користувача, статус онлайн/offline), кнопку для виходу або налаштувань чату.",
+  "main": "eslint.config.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }
