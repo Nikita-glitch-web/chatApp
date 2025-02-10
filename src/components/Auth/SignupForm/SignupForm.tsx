@@ -41,7 +41,7 @@ export const SignUpForm: React.FC = () => {
       try {
         await signUp(credentials);
         console.log("User signed up successfully");
-        navigate("/tasks"); // Перенаправлення на сторінку /tasks
+        navigate("/chat"); // Перенаправлення на сторінку /chat
       } catch (err) {
         setError("Failed to sign up. Please try again.");
         console.error("Sign-up error:", err);
@@ -51,9 +51,10 @@ export const SignUpForm: React.FC = () => {
   );
 
   const handleLoginRedirect = () => {
-    navigate("/login"); // Перенаправлення на сторінку входу
+    navigate("/login");
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleGoogleSuccess = async (response: any) => {
     const token = response?.credential;
     if (!token) {
@@ -61,8 +62,8 @@ export const SignUpForm: React.FC = () => {
       return;
     }
     try {
-      await signUpWithGoogle({ token } as GoogleAuthCredentials); // Використання Google токену
-      navigate("/tasks");
+      await signUpWithGoogle({ token } as GoogleAuthCredentials);
+      navigate("/chat");
     } catch (err) {
       setError("Google sign-up failed. Please try again.");
       console.error("Google Sign-up Error:", err);
@@ -78,11 +79,11 @@ export const SignUpForm: React.FC = () => {
     <Box
       sx={{
         backgroundColor: "#f5f5f5",
-        width: "100vw", // Займає всю ширину вікна
-        height: "100vh", // Займає всю висоту вікна
-        display: "flex", // Вмикає режим flexbox
-        justifyContent: "center", // Центрує по горизонталі
-        alignItems: "center", // Центрує по вертикалі
+        width: "100vw",
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
         margin: 0,
         padding: 0,
       }}
@@ -95,7 +96,7 @@ export const SignUpForm: React.FC = () => {
           padding: 4,
           backgroundColor: "#fff",
           borderRadius: 2,
-          boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)", // Тінь для форми
+          boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
           display: "flex",
           flexDirection: "column",
           gap: 2,
