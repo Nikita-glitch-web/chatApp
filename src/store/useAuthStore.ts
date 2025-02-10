@@ -1,13 +1,13 @@
 import { create } from "zustand";
+import { User } from "firebase/auth";
 import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  User,
-} from "firebase/auth";
-import { auth } from "./firebase.config";
-import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+  loginUser,
+  registerUser,
+  logoutUser,
+  getCurrentUser,
+  loginWithGoogle,
+  signUpWithGoogle,
+} from "../services/authServices";
 
 interface IAuthCredentials {
   email: string;
@@ -20,6 +20,7 @@ interface GoogleAuthCredentials {
 
 export interface IAuthStore {
   user: User | null;
+  loading: boolean; // Додаємо поле для відслідковування завантаження
   login: (credentials: IAuthCredentials) => Promise<void>;
   signUp: (credentials: IAuthCredentials) => Promise<void>;
   logout: () => Promise<void>;
@@ -30,68 +31,84 @@ export interface IAuthStore {
 
 export const useAuthStore = create<IAuthStore>((set) => ({
   user: null,
+  loading: false,
 
   login: async ({ email, password }: IAuthCredentials) => {
+    set({ loading: true });
     try {
-      const { user } = await signInWithEmailAndPassword(auth, email, password);
-      set({ user });
+      const user = await loginUser(email, password);
+      set({ user, loading: false });
     } catch (error) {
       console.error("Login failed:", error);
+      set({ loading: false });
       throw error;
     }
   },
 
   signUp: async ({ email, password }: IAuthCredentials) => {
+    set({ loading: true });
     try {
-      const { user } = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      set({ user });
+      const user = await registerUser(email, password);
+      set({ user, loading: false });
     } catch (error) {
       console.error("Sign up failed:", error);
+      set({ loading: false });
       throw error;
     }
   },
 
   logout: async () => {
+    set({ loading: true });
     try {
-      await signOut(auth);
-      set({ user: null });
+      await logoutUser();
+      set({ user: null, loading: false });
     } catch (error) {
       console.error("Logout failed:", error);
+      set({ loading: false });
       throw error;
     }
   },
 
   fetchCurrentUser: () => {
-    onAuthStateChanged(auth, (currentUser) => {
-      console.log(">>>>>>>>", currentUser);
-      set({ user: currentUser });
-    });
+    // Якщо користувач уже є в стані, не робимо запит
+    if (useAuthStore.getState().user) return;
+
+    console.log("Fetching current user...");
+    set({ loading: true });
+
+    getCurrentUser()
+      .then((user) => {
+        console.log("User fetched:", user);
+        set({ user, loading: false });
+      })
+      .catch((error) => {
+        console.error("Failed to fetch current user:", error);
+        set({ loading: false });
+      });
   },
 
   loginWithGoogle: async ({ token }: GoogleAuthCredentials) => {
+    set({ loading: true });
     try {
-      const credential = GoogleAuthProvider.credential(token);
-      const { user } = await signInWithCredential(auth, credential);
-      set({ user });
+      const user = await loginWithGoogle(token);
+      set({ user, loading: false });
       console.log("Google login successful");
     } catch (error) {
       console.error("Google login failed:", error);
+      set({ loading: false });
       throw error;
     }
   },
 
   signUpWithGoogle: async ({ token }: GoogleAuthCredentials) => {
+    set({ loading: true });
     try {
-      const credential = GoogleAuthProvider.credential(token);
-      const { user } = await signInWithCredential(auth, credential);
-      set({ user });
+      const user = await signUpWithGoogle(token);
+      set({ user, loading: false });
       console.log("Google sign-up successful");
     } catch (error) {
       console.error("Google sign-up failed:", error);
+      set({ loading: false });
       throw error;
     }
   },
