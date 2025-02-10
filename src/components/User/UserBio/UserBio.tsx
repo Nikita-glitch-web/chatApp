@@ -35,28 +35,48 @@ export const UserBio: React.FC = observer(() => {
   };
 
   return (
-    <Card sx={{ maxWidth: 500, p: 3, boxShadow: 4, borderRadius: 3 }}>
-      <CardContent>
+    <Card
+      sx={{
+        maxWidth: 500,
+        borderRadius: 3,
+        boxShadow: "none",
+        border: "none",
+        p: 0, // Видалив padding
+      }}
+    >
+      <CardContent sx={{ p: 0 }}>
         <Typography variant="h5" fontWeight="bold" gutterBottom>
-          Інформація про користувача
+          Information about you!
         </Typography>
         {isEditing ? (
-          <Box display="flex" flexDirection="column" gap={2}>
+          <Box display="flex" flexDirection="column" gap={1}>
             <TextField
               label="Ім'я"
               value={editedFirstName}
               onChange={(e) => setEditedFirstName(e.target.value)}
               fullWidth
-              margin="normal"
-              InputProps={{ sx: { fontSize: "1.1rem" } }}
+              InputProps={{
+                sx: {
+                  fontSize: "1.1rem",
+                  background: "transparent",
+                  border: "none",
+                },
+              }}
+              variant="standard"
             />
             <TextField
               label="Прізвище"
               value={editedLastName}
               onChange={(e) => setEditedLastName(e.target.value)}
               fullWidth
-              margin="normal"
-              InputProps={{ sx: { fontSize: "1.1rem" } }}
+              InputProps={{
+                sx: {
+                  fontSize: "1.1rem",
+                  background: "transparent",
+                  border: "none",
+                },
+              }}
+              variant="standard"
             />
             <TextField
               label="Опис"
@@ -65,19 +85,25 @@ export const UserBio: React.FC = observer(() => {
               fullWidth
               multiline
               rows={3}
-              margin="normal"
-              InputProps={{ sx: { fontSize: "1.1rem" } }}
+              InputProps={{
+                sx: {
+                  fontSize: "1.1rem",
+                  background: "transparent",
+                  border: "none",
+                },
+              }}
+              variant="standard"
             />
             <Button
               variant="contained"
-              color="primary" // Оригінальний колір
+              color="primary"
               onClick={handleSave}
               sx={{
                 fontSize: "1rem",
                 fontWeight: "bold",
                 py: 1.5,
                 borderRadius: 2,
-                mt: 2,
+                mt: 1,
               }}
               fullWidth
             >
@@ -85,29 +111,29 @@ export const UserBio: React.FC = observer(() => {
             </Button>
           </Box>
         ) : (
-          <Box display="flex" flexDirection="column" gap={2}>
+          <Box display="flex" flexDirection="column" gap={1}>
             <Typography variant="body1" fontSize="1.2rem">
-              <strong>Ім'я:</strong> {firstName || "Не вказано"}
+              <strong>Name:</strong> {firstName || "None"}
             </Typography>
             <Typography variant="body1" fontSize="1.2rem">
-              <strong>Прізвище:</strong> {lastName || "Не вказано"}
+              <strong>Surname:</strong> {lastName || "None"}
             </Typography>
             <Typography variant="body1" fontSize="1.2rem">
-              <strong>Опис:</strong> {bio || "Не вказано"}
+              <strong>Description:</strong> {bio || "None"}
             </Typography>
             <Button
-              variant="outlined" // Оригінальний колір кнопки
+              variant="outlined"
               onClick={() => setIsEditing(true)}
               sx={{
                 fontSize: "1rem",
                 fontWeight: "bold",
                 py: 1.5,
                 borderRadius: 2,
-                mt: 2,
+                mt: 1,
               }}
               fullWidth
             >
-              Редагувати
+              Change
             </Button>
           </Box>
         )}

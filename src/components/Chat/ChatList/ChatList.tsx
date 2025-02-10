@@ -18,6 +18,7 @@ import {
   IconButton,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { useNavigate } from "react-router-dom"; // імпортуємо useNavigate
 import { Chat } from "../../../services/chatServices";
 
 type ChatListProps = {
@@ -37,6 +38,7 @@ export const ChatList: React.FC<ChatListProps> = ({
   onAddUserToChat,
   onDeleteChat,
 }) => {
+  const navigate = useNavigate(); // ініціалізація useNavigate
   const [showCreateChatForm, setShowCreateChatForm] = useState(false);
   const [newChatName, setNewChatName] = useState("");
   const [newChatUsers, setNewChatUsers] = useState("");
@@ -115,7 +117,10 @@ export const ChatList: React.FC<ChatListProps> = ({
           <ListItem
             key={chat.id}
             component="a"
-            onClick={() => onSelectChat(chat.id)}
+            onClick={() => {
+              onSelectChat(chat.id); // Викликаємо onSelectChat
+              navigate(`/chat/${chat.id}`); // Оновлюємо URL без перезавантаження сторінки
+            }}
             onDoubleClick={() => setEditingChat(chat)}
             sx={{
               display: "flex",

@@ -13,19 +13,22 @@ import {
   sendImage,
   createChat,
   addUserToChatByEmail,
+  deleteChat,
   Chat,
   Message,
-  deleteChat,
 } from "../../../services/chatServices";
+import { useParams, useNavigate } from "react-router-dom";
+import { useChatStore } from "../../../store/useChatStore"; // Імпортуємо useChatStore
 
 export const ChatPage: React.FC = () => {
+  const { chatId } = useParams<{ chatId: string }>(); // Отримуємо chatId з URL
+  const { selectChat } = useChatStore(); // Використовуємо store для вибору чату
   const [chats, setChats] = useState<Chat[]>([]);
-  const [currentChat, setCurrentChat] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [isChatListOpen, setIsChatListOpen] = useState(false);
-
   const auth = getAuth();
+  const navigate = useNavigate(); // Для навігації
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -47,26 +50,38 @@ export const ChatPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!currentChat) return;
+    if (!chatId || !currentUser) {
+      // Якщо chatId або currentUser відсутні, редіректимо на сторінку помилки
+      navigate("/error");
+      return;
+    }
 
-    const unsubscribe = subscribeToMessages(currentChat, setMessages);
+    // Вибір чату і підписка на повідомлення
+    selectChat(chatId);
+    const unsubscribe = subscribeToMessages(chatId, setMessages);
+
     return () => unsubscribe();
-  }, [currentChat]);
+  }, [chatId, currentUser, selectChat, navigate]);
+  // Підписка оновлюється тільки при зміні chatId або currentUser
 
   const handleSendMessage = (text: string) => {
-    if (currentChat && currentUser) {
-      sendMessage(currentChat, currentUser, text);
+    if (chatId && currentUser) {
+      sendMessage(chatId, currentUser, text);
     }
   };
 
   const handleSendImage = (imageFile: File) => {
-    if (currentChat && currentUser) {
-      sendImage(currentChat, currentUser, imageFile);
+    if (chatId && currentUser) {
+      sendImage(chatId, currentUser, imageFile);
     }
   };
 
-  const handleSelectChat = (chatId: string) => {
-    setCurrentChat(chatId);
+  const handleSelectChat = (selectedChatId: string) => {
+    // Використовуємо selectChat для зміни активного чату
+    selectChat(selectedChatId);
+
+    // Перенаправляємо на вибраний чат
+    navigate(`/chat/${selectedChatId}`);
     setIsChatListOpen(false); // Закриваємо список чатів після вибору на мобільному
   };
 
@@ -76,6 +91,7 @@ export const ChatPage: React.FC = () => {
     try {
       const newChat = await createChat(name, members);
       setChats((prevChats) => [...prevChats, newChat]);
+      navigate(`/chat/${newChat.id}`); // Після створення чату автоматично переходимо до нього
     } catch (error) {
       console.error("Error creating chat:", error);
     }
@@ -105,7 +121,7 @@ export const ChatPage: React.FC = () => {
     try {
       await deleteChat(chatId);
       setChats((prevChats) => prevChats.filter((chat) => chat.id !== chatId));
-      if (currentChat === chatId) setCurrentChat(null);
+      navigate("/"); // Переходимо на головну після видалення чату
     } catch (error) {
       console.error("Failed to delete chat:", error);
     }
@@ -127,6 +143,13 @@ export const ChatPage: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    console.log("chatId from URL:", chatId);
+    if (chatId && currentUser) {
+      selectChat(chatId); // Викликаємо selectChat при завантаженні сторінки
+    }
+  }, [chatId, currentUser, selectChat]);
+
   return (
     <Box
       sx={{
@@ -136,7 +159,6 @@ export const ChatPage: React.FC = () => {
         position: "relative",
       }}
     >
-      {/* Кнопка для відкриття списку чатів на мобільних пристроях */}
       <IconButton
         onClick={() => setIsChatListOpen(true)}
         sx={{
@@ -150,7 +172,6 @@ export const ChatPage: React.FC = () => {
         <MenuIcon />
       </IconButton>
 
-      {/* Список чатів */}
       <Box
         sx={{
           width: { xs: "100%", md: "300px" },
@@ -177,7 +198,7 @@ export const ChatPage: React.FC = () => {
 
         <ChatList
           chats={chats}
-          onSelectChat={handleSelectChat}
+          onSelectChat={handleSelectChat} // Використовуємо handleSelectChat
           onCreateChat={handleCreateChat}
           onUpdateChat={handleUpdateChat}
           onAddUserToChat={handleAddUserToChat}
@@ -185,7 +206,6 @@ export const ChatPage: React.FC = () => {
         />
       </Box>
 
-      {/* Вікно повідомлень */}
       <Box
         sx={{
           flexGrow: 1,
@@ -193,7 +213,7 @@ export const ChatPage: React.FC = () => {
           flexDirection: "column",
         }}
       >
-        {currentChat ? (
+        {chatId ? (
           <>
             <MessageWindow messages={messages} currentUser={currentUser} />
             <MessageInput

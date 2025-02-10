@@ -13,6 +13,7 @@ import { getAuth } from "firebase/auth"; // Додаємо Firebase Auth для 
 interface IChatStore {
   chats: Chat[];
   selectedChat: Chat | null;
+  chatId: string | null; // Додаємо chatId для зберігання поточного чату
   loadChats: () => Promise<void>;
   createChat: (name: string, members: string[]) => Promise<void>;
   selectChat: (chatId: string) => void;
@@ -20,11 +21,13 @@ interface IChatStore {
   sendImage: (chatId: string, userId: string, imageFile: File) => Promise<void>;
   updateChat: (chatId: string, updatedData: Partial<Chat>) => Promise<void>;
   deleteChat: (chatId: string) => Promise<void>;
+  setChatId: (chatId: string) => void; // Метод для оновлення chatId
 }
 
 export const useChatStore = create<IChatStore>((set, get) => ({
   chats: [],
   selectedChat: null,
+  chatId: null, // Ініціалізація значення chatId
 
   loadChats: async () => {
     try {
@@ -54,7 +57,7 @@ export const useChatStore = create<IChatStore>((set, get) => ({
   selectChat: (chatId: string) => {
     const chat =
       get().chats.find((chat: { id: string }) => chat.id === chatId) || null;
-    set({ selectedChat: chat });
+    set({ selectedChat: chat, chatId }); // Оновлюємо selectedChat та chatId
   },
 
   sendMessage: async (chatId: string, userId: string, text: string) => {
@@ -113,5 +116,9 @@ export const useChatStore = create<IChatStore>((set, get) => ({
     } catch (error) {
       console.error("Failed to delete chat", error);
     }
+  },
+
+  setChatId: (chatId: string) => {
+    set({ chatId }); // Оновлюємо chatId
   },
 }));
