@@ -1,15 +1,238 @@
+import React, { useState, useEffect } from "react";
+import { Box, IconButton } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { ChatList } from "../ChatList/ChatList";
 import { MessageWindow } from "../MessageWindow/MessageWindow";
 import { MessageInput } from "../MessageInput/MessageInput";
-import { Box } from "@mui/material";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import {
+  loadChats,
+  subscribeToMessages,
+  sendMessage,
+  sendImage,
+  createChat,
+  addUserToChatByEmail,
+  deleteChat,
+  Chat,
+  Message,
+} from "../../../services/chatServices";
+import { useParams, useNavigate } from "react-router-dom";
+import { useChatStore } from "../../../store/useChatStore"; // Імпортуємо useChatStore
 
 export const ChatPage: React.FC = () => {
+  const { chatId } = useParams<{ chatId: string }>(); // Отримуємо chatId з URL
+  const { selectChat } = useChatStore(); // Використовуємо store для вибору чату
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [isChatListOpen, setIsChatListOpen] = useState(false);
+  const auth = getAuth();
+  const navigate = useNavigate(); // Для навігації
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUser(user.uid);
+        try {
+          const loadedChats = await loadChats(user.uid);
+          setChats(loadedChats);
+        } catch (error) {
+          console.error("Error loading chats:", error);
+        }
+      } else {
+        setCurrentUser(null);
+        setChats([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!chatId || !currentUser) {
+      // Якщо chatId або currentUser відсутні, редіректимо на сторінку помилки
+      navigate("/error");
+      return;
+    }
+
+    // Вибір чату і підписка на повідомлення
+    selectChat(chatId);
+    const unsubscribe = subscribeToMessages(chatId, setMessages);
+
+    return () => unsubscribe();
+  }, [chatId, currentUser, selectChat, navigate]);
+  // Підписка оновлюється тільки при зміні chatId або currentUser
+
+  const handleSendMessage = (text: string) => {
+    if (chatId && currentUser) {
+      sendMessage(chatId, currentUser, text);
+    }
+  };
+
+  const handleSendImage = (imageFile: File) => {
+    if (chatId && currentUser) {
+      sendImage(chatId, currentUser, imageFile);
+    }
+  };
+
+  const handleSelectChat = (selectedChatId: string) => {
+    // Використовуємо selectChat для зміни активного чату
+    selectChat(selectedChatId);
+
+    // Перенаправляємо на вибраний чат
+    navigate(`/chat/${selectedChatId}`);
+    setIsChatListOpen(false); // Закриваємо список чатів після вибору на мобільному
+  };
+
+  const handleCreateChat = async (name: string, members: string[]) => {
+    if (!currentUser) return;
+
+    try {
+      const newChat = await createChat(name, members);
+      setChats((prevChats) => [...prevChats, newChat]);
+      navigate(`/chat/${newChat.id}`); // Після створення чату автоматично переходимо до нього
+    } catch (error) {
+      console.error("Error creating chat:", error);
+    }
+  };
+
+  const handleAddUserToChat = async (chatId: string, userEmail: string) => {
+    if (!currentUser) return;
+
+    try {
+      await addUserToChatByEmail(chatId, userEmail);
+      const updatedChat = chats.find((chat) => chat.id === chatId);
+      if (updatedChat) {
+        setChats((prevChats) =>
+          prevChats.map((chat) =>
+            chat.id === chatId
+              ? { ...chat, members: [...chat.members, userEmail] }
+              : chat
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error adding user to chat:", error);
+    }
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    try {
+      await deleteChat(chatId);
+      setChats((prevChats) => prevChats.filter((chat) => chat.id !== chatId));
+      navigate("/"); // Переходимо на головну після видалення чату
+    } catch (error) {
+      console.error("Failed to delete chat:", error);
+    }
+  };
+
+  const handleUpdateChat = async (
+    id: string,
+    name: string,
+    users: string[]
+  ) => {
+    try {
+      setChats((prevChats) =>
+        prevChats.map((chat) =>
+          chat.id === id ? { ...chat, name, members: users } : chat
+        )
+      );
+    } catch (error) {
+      console.error("Error updating chat:", error);
+    }
+  };
+
+  useEffect(() => {
+    console.log("chatId from URL:", chatId);
+    if (chatId && currentUser) {
+      selectChat(chatId); // Викликаємо selectChat при завантаженні сторінки
+    }
+  }, [chatId, currentUser, selectChat]);
+
   return (
-    <Box sx={{ display: "flex", height: "100vh" }}>
-      <ChatList />
-      <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
-        <MessageWindow />
-        <MessageInput />
+    <Box
+      sx={{
+        display: "flex",
+        height: "100vh",
+        width: "100vw",
+        position: "relative",
+      }}
+    >
+      <IconButton
+        onClick={() => setIsChatListOpen(true)}
+        sx={{
+          display: { xs: isChatListOpen ? "none" : "block", md: "none" },
+          position: "absolute",
+          top: 8,
+          left: 8,
+          zIndex: 10,
+        }}
+      >
+        <MenuIcon />
+      </IconButton>
+
+      <Box
+        sx={{
+          width: { xs: "100%", md: "300px" },
+          display: { xs: isChatListOpen ? "block" : "none", md: "block" },
+          position: { xs: "absolute", md: "relative" },
+          height: "100%",
+          zIndex: 20,
+          backgroundColor: "background.paper",
+        }}
+      >
+        <IconButton
+          onClick={() => setIsChatListOpen(false)}
+          sx={{
+            display: { xs: "block", md: "none" },
+            position: "absolute",
+            top: 8,
+            left: 8,
+            zIndex: 21,
+            padding: "20px",
+          }}
+        >
+          <ArrowBackIcon />
+        </IconButton>
+
+        <ChatList
+          chats={chats}
+          onSelectChat={handleSelectChat} // Використовуємо handleSelectChat
+          onCreateChat={handleCreateChat}
+          onUpdateChat={handleUpdateChat}
+          onAddUserToChat={handleAddUserToChat}
+          onDeleteChat={handleDeleteChat}
+        />
+      </Box>
+
+      <Box
+        sx={{
+          flexGrow: 1,
+          display: { xs: isChatListOpen ? "none" : "flex", md: "flex" },
+          flexDirection: "column",
+        }}
+      >
+        {chatId ? (
+          <>
+            <MessageWindow messages={messages} currentUser={currentUser} />
+            <MessageInput
+              onSendMessage={handleSendMessage}
+              onSendImage={handleSendImage}
+            />
+          </>
+        ) : (
+          <Box
+            sx={{
+              textAlign: "center",
+              marginTop: 4,
+              marginLeft: 4,
+              fontSize: "32px",
+            }}
+          >
+            <p>Select a chat</p>
+          </Box>
+        )}
       </Box>
     </Box>
   );
