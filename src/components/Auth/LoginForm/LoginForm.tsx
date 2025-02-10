@@ -4,6 +4,7 @@ import { CustomButton } from "../../common/Button/Button";
 import { useAuthStore } from "../../../store/useAuthStore";
 import { useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
+import { useChatStore } from "../../../store/useChatStore"; // Приклад імпорту для стейту чату
 
 type GoogleAuthCredentials = {
   token: string;
@@ -18,6 +19,9 @@ export const LoginForm: React.FC = () => {
   const login = useAuthStore((state) => state.login);
   const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
 
+  // Отримуємо chatId зі стору
+  const chatId = useChatStore((state) => state.chatId);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -31,7 +35,19 @@ export const LoginForm: React.FC = () => {
 
       try {
         await login({ email, password });
-        navigate("/tasks");
+
+        // Завантажуємо чати після логіну
+        await useChatStore.getState().loadChats();
+
+        // Перевіряємо, чи є активний чат, і встановлюємо chatId
+        if (chatId) {
+          useChatStore.getState().setChatId(chatId); // Оновлюємо chatId в сторі
+          navigate(`/chat/:${chatId}`);
+        } else {
+          setError("No active chat available.");
+          console.error("No active chat found in the store");
+        }
+
         console.log("User logged in successfully");
       } catch (err) {
         setError("Login failed. Please try again.");
@@ -41,13 +57,14 @@ export const LoginForm: React.FC = () => {
         });
       }
     },
-    [email, password, login, navigate]
+    [email, password, login, navigate, chatId]
   );
 
   const handleSignupRedirect = () => {
     navigate("/signup");
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleGoogleSuccess = async (response: any) => {
     const token = response?.credential;
     if (!token) {
@@ -59,7 +76,14 @@ export const LoginForm: React.FC = () => {
     }
     try {
       await loginWithGoogle({ token } as GoogleAuthCredentials);
-      navigate("/tasks");
+
+      // Якщо chatId є в сторі, переходимо на чат
+      if (chatId) {
+        navigate(`/chat/${chatId}`);
+      } else {
+        setError("No active chat available.");
+        console.error("No active chat found in the store");
+      }
     } catch (err) {
       setError("Google login failed. Please try again.");
       console.error("Google Login error:", err);
@@ -81,11 +105,11 @@ export const LoginForm: React.FC = () => {
     <Box
       sx={{
         backgroundColor: "#f5f5f5",
-        width: "100vw", // Займає всю ширину вікна
-        height: "100vh", // Займає всю висоту вікна
-        display: "flex", // Вмикає режим flexbox
-        justifyContent: "center", // Центрує по горизонталі
-        alignItems: "center", // Центрує по вертикалі
+        width: "100vw",
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
         margin: 0,
         padding: 0,
       }}
@@ -102,7 +126,6 @@ export const LoginForm: React.FC = () => {
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-
           gap: 2,
         }}
       >
@@ -144,7 +167,7 @@ export const LoginForm: React.FC = () => {
         </CustomButton>
         <Box
           sx={{
-            width: "100%", // Повна ширина як у інших кнопок
+            width: "100%",
             display: "flex",
             justifyContent: "center",
           }}
