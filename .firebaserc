@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "chat-app-6068c"
-  }
+    "default": "chat-app-6068c",
+    "Storage": "chat-app-6068c"
+  },
+  "targets": {},
+  "etags": {}
 }
